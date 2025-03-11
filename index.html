@@ -604,16 +604,14 @@ startBtn.addEventListener('click', function() {
         }
     };
 
-    recorder.onstop = async () => {
+    recorder.onstop = () => {
+        // Create a Blob from the recorded chunks
         const blob = new Blob(chunks, { type: 'video/webm' });
 
-        // Convert WebM to MP4 using ffmpeg.js
-        const mp4Blob = await convertWebMtoMP4(blob);
-
-        // Create a download link for the MP4 file
-        const url = URL.createObjectURL(mp4Blob);
+        // Create a download link for the WebM file
+        const url = URL.createObjectURL(blob);
         downloadLink.href = url;
-        downloadLink.download = 'audio_visualization.mp4'; // Change extension to .mp4
+        downloadLink.download = 'audio_visualization.webm'; // Save as .webm
         downloadLink.style.display = 'block';
     };
 
@@ -629,31 +627,6 @@ stopBtn.addEventListener('click', function() {
         stopBtn.disabled = true;
     }
 });
-
-// Function to convert WebM to MP4 using ffmpeg.js
-async function convertWebMtoMP4(webmBlob) {
-    // Load ffmpeg.js
-    const { createFFmpeg, fetchFile } = FFmpeg;
-    const ffmpeg = createFFmpeg({ log: true });
-    await ffmpeg.load();
-
-    // Write the WebM file to ffmpeg's file system
-    const inputFileName = 'input.webm';
-    const outputFileName = 'output.mp4';
-    ffmpeg.FS('writeFile', inputFileName, await fetchFile(webmBlob));
-
-    // Run ffmpeg command to convert WebM to MP4
-    await ffmpeg.run('-i', inputFileName, '-c', 'copy', outputFileName);
-
-    // Read the converted MP4 file
-    const data = ffmpeg.FS('readFile', outputFileName);
-
-    // Create a new Blob with the MP4 data
-    return new Blob([data.buffer], { type: 'video/mp4' });
-}
 </script>
-
-<!-- Include ffmpeg.js -->
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js"></script>
 </body>
 </html>
