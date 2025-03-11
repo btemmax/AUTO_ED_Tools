@@ -6,7 +6,8 @@
 <title>AUDIO SPECTRUM Creator</title>
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 <style>
-/* General Styles */
+/* Add your CSS styles here */
+    /* General Styles */
 body {
     margin: 0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -122,10 +123,12 @@ canvas {
 #downloadLink:hover {
     background: #005f8a;
 }
+
 </style>
 </head>
 <body>
-<!-- Sidebar -->
+<!-- Add your HTML structure here -->
+    <!-- Sidebar -->
 <div class="sidebar">
     <h2>Settings</h2>
 
@@ -209,6 +212,9 @@ canvas {
     <p>Made by AUTO ED | @2025 | *subscribe to remove watermark</p>
 </div>
 
+
+
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js"></script>
 <script>
 const audioFileInput = document.getElementById('audioFile');
 const backgroundImageInput = document.getElementById('backgroundImage');
@@ -231,7 +237,7 @@ const watermarkPositionSelect = document.getElementById('watermarkPosition');
 canvas.width = 800;
 canvas.height = 400;
 
-let audioContext, analyser, source, dataArray, recorder, chunks = [];
+let audioContext, analyser, source, dataArray;
 let backgroundImage = null;
 let particles = [];
 let barLayout = 'linear';
@@ -244,119 +250,68 @@ let customTextColor = '#ffffff';
 let logoImage = null;
 let watermarkPosition = 'upperleft';
 
-// Event Listeners for Settings
-barLayoutSelect.addEventListener('change', (e) => {
-    barLayout = e.target.value;
-});
+// ffmpeg.wasm variables
+let ffmpeg = null;
+let frames = [];
+let isRecording = false;
 
-barColorInput.addEventListener('input', (e) => {
-    barColor = e.target.value;
-});
-
-particleColorInput.addEventListener('input', (e) => {
-    particleColor = e.target.value;
-});
-
-particleToggleSelect.addEventListener('change', (e) => {
-    enableParticles = e.target.value === 'true';
-});
-
-textInput.addEventListener('input', (e) => {
-    customText = e.target.value;
-});
-
-fontSelect.addEventListener('change', (e) => {
-    customFont = e.target.value;
-});
-
-textColorInput.addEventListener('input', (e) => {
-    customTextColor = e.target.value;
-});
-
-logoUpload.addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.src = e.target.result;
-            img.onload = function() {
-                logoImage = img;
-            };
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
-watermarkPositionSelect.addEventListener('change', (e) => {
-    watermarkPosition = e.target.value;
-});
-
-resetSettingsBtn.addEventListener('click', () => {
-    barLayoutSelect.value = 'linear';
-    barColorInput.value = '#6e44ff';
-    particleColorInput.value = '#ffffff';
-    particleToggleSelect.value = 'true';
-    textInput.value = '';
-    fontSelect.value = 'Calibri, sans-serif';
-    textColorInput.value = '#ffffff';
-    logoUpload.value = '';
-    watermarkPositionSelect.value = 'upperleft';
-    barLayout = 'linear';
-    barColor = '#6e44ff';
-    particleColor = '#ffffff';
-    enableParticles = true;
-    customText = '';
-    customFont = 'Calibri, sans-serif';
-    customTextColor = '#ffffff';
-    logoImage = null;
-    watermarkPosition = 'upperleft';
-});
-
-// Handle background image upload
-backgroundImageInput.addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = new Image();
-            img.src = e.target.result;
-            img.onload = function() {
-                backgroundImage = img;
-            };
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
-// Handle audio file upload
-audioFileInput.addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const audio = new Audio();
-        audio.src = URL.createObjectURL(file);
-        audio.controls = true;
-        document.body.appendChild(audio);
-        audio.play();
-        setupAudioContext(audio);
-    } else {
-        alert("Please upload a valid audio file.");
-    }
-});
-
-// Set up audio context and analyzer
-function setupAudioContext(audio) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    dataArray = new Uint8Array(analyser.frequencyBinCount);
-    source = audioContext.createMediaElementSource(audio);
-    source.connect(analyser);
-    source.connect(audioContext.destination);
-    drawVisualizer();
+// Initialize ffmpeg.wasm
+async function initFFmpeg() {
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    ffmpeg = createFFmpeg({ log: true });
+    await ffmpeg.load();
 }
 
-// Draw the visualizer
+// Start recording
+startBtn.addEventListener('click', async () => {
+    if (!ffmpeg) await initFFmpeg();
+    frames = [];
+    isRecording = true;
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    console.log("Recording started...");
+});
+
+// Stop recording and encode to MP4
+stopBtn.addEventListener('click', async () => {
+    isRecording = false;
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    console.log("Recording stopped. Encoding to MP4...");
+
+    // Convert frames to a video using ffmpeg.wasm
+    const frameRate = 30; // 30 FPS
+    const inputFileName = 'input_%04d.png';
+    const outputFileName = 'output.mp4';
+
+    // Write frames to ffmpeg's file system
+    for (let i = 0; i < frames.length; i++) {
+        const frameName = `input_${i.toString().padStart(4, '0')}.png`;
+        ffmpeg.FS('writeFile', frameName, await fetchFile(frames[i]));
+    }
+
+    // Run ffmpeg command to create MP4
+    await ffmpeg.run(
+        '-framerate', frameRate.toString(),
+        '-i', inputFileName,
+        '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
+        outputFileName
+    );
+
+    // Read the output MP4 file
+    const data = ffmpeg.FS('readFile', outputFileName);
+
+    // Create a download link for the MP4 file
+    const blob = new Blob([data.buffer], { type: 'video/mp4' });
+    const url = URL.createObjectURL(blob);
+    downloadLink.href = url;
+    downloadLink.download = 'audio_visualization.mp4';
+    downloadLink.style.display = 'block';
+    console.log("MP4 file ready for download.");
+});
+
+// Draw the visualizer and capture frames
 function drawVisualizer() {
     requestAnimationFrame(drawVisualizer);
     analyser.getByteFrequencyData(dataArray);
@@ -364,18 +319,9 @@ function drawVisualizer() {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Background vibration effect
-    const highFrequency = dataArray.slice(-10).reduce((a, b) => a + b, 0) / 10;
-    const shakeIntensity = Math.min(highFrequency / 255 * 10, 5); // Adjust intensity
-    const offsetX = (Math.random() - 0.5) * shakeIntensity;
-    const offsetY = (Math.random() - 0.5) * shakeIntensity;
-
-    // Draw background image with vibration effect
+    // Draw background image
     if (backgroundImage) {
-        ctx.save();
-        ctx.translate(offsetX, offsetY);
         ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
-        ctx.restore();
     }
 
     // Draw bars based on layout
@@ -404,6 +350,12 @@ function drawVisualizer() {
 
     // Draw custom text and logo in the center
     drawCustomTextAndLogo();
+
+    // Capture frames if recording
+    if (isRecording) {
+        const frame = canvas.toDataURL('image/png');
+        frames.push(frame);
+    }
 }
 
 // Draw linear bars (horizontal)
@@ -579,54 +531,32 @@ class Particle {
     }
 }
 
-// Handle recording
-startBtn.addEventListener('click', function() {
-    chunks = [];
-    
-    // Capture the canvas stream
-    const canvasStream = canvas.captureStream(30); // 30 FPS
-
-    // Capture the audio stream from the audio context
-    const audioStream = audioContext.createMediaStreamDestination().stream;
-
-    // Combine the canvas stream and audio stream
-    const combinedStream = new MediaStream([
-        ...canvasStream.getVideoTracks(),
-        ...audioStream.getAudioTracks()
-    ]);
-
-    // Create a MediaRecorder with the combined stream
-    recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
-
-    recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-            chunks.push(e.data);
-        }
-    };
-
-    recorder.onstop = () => {
-        // Create a Blob from the recorded chunks
-        const blob = new Blob(chunks, { type: 'video/webm' });
-
-        // Create a download link for the WebM file
-        const url = URL.createObjectURL(blob);
-        downloadLink.href = url;
-        downloadLink.download = 'audio_visualization.webm'; // Save as .webm
-        downloadLink.style.display = 'block';
-    };
-
-    recorder.start(100); // Capture data every 100ms
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-});
-
-stopBtn.addEventListener('click', function() {
-    if (recorder && recorder.state === 'recording') {
-        recorder.stop();
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
+// Handle audio file upload
+audioFileInput.addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const audio = new Audio();
+        audio.src = URL.createObjectURL(file);
+        audio.controls = true;
+        document.body.appendChild(audio);
+        audio.play();
+        setupAudioContext(audio);
+    } else {
+        alert("Please upload a valid audio file.");
     }
 });
+
+// Set up audio context and analyzer
+function setupAudioContext(audio) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    source = audioContext.createMediaElementSource(audio);
+    source.connect(analyser);
+    source.connect(audioContext.destination);
+    drawVisualizer();
+}
 </script>
 </body>
 </html>
