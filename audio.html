@@ -155,14 +155,21 @@
         </button>
                 <h2>Settings</h2>
 
-        <!-- Bar Layout -->
-        <label for="barLayout">Bar Layout</label>
-        <select id="barLayout">
-            <option value="linear">Linear (Horizontal)</option>
-            <option value="vertical">Linear (Vertical)</option>
-            <option value="circular">Circular</option>
-            <option value="center">Center Bars</option>
-        </select>
+       <!-- Bar Layout -->
+<label for="barLayout">Bar Layout</label>
+<select id="barLayout">
+    <option value="linear">Linear (Horizontal)</option>
+    <option value="vertical">Linear (Vertical)</option>
+    <option value="circular">Circular</option>
+    <option value="center">Center Bars</option>
+    <option value="radial">Radial</option>
+    <option value="logarithmic">Logarithmic</option>
+    <option value="spiral">Spiral</option>
+    <option value="gradient">Gradient</option>
+    <option value="discrete">Discrete</option>
+    <option value="waveform">Waveform</option>
+    <option value="branching">Branching</option>
+</select>
 
         <!-- Bar Color -->
         <label for="barColor">Bar Color</label>
@@ -245,393 +252,496 @@
         
         </script>
 
-    <script>
-        const audioFileInput = document.getElementById('audioFile');
-        const backgroundImageInput = document.getElementById('backgroundImage');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const startBtn = document.getElementById('startRecording');
-        const stopBtn = document.getElementById('stopRecording');
-        const downloadLink = document.getElementById('downloadLink');
-        const downloadAudioLink = document.getElementById('downloadAudioLink');
-        const barLayoutSelect = document.getElementById('barLayout');
-        const barColorInput = document.getElementById('barColor');
-        const particleColorInput = document.getElementById('particleColor');
-        const particleToggleSelect = document.getElementById('particleToggle');
-        const resetSettingsBtn = document.getElementById('resetSettings');
-        const textInput = document.getElementById('textInput');
-        const fontSelect = document.getElementById('fontSelect');
-        const textColorInput = document.getElementById('textColor');
-        const logoUpload = document.getElementById('logoUpload');
-        const watermarkPositionSelect = document.getElementById('watermarkPosition');
+<script>
+    const audioFileInput = document.getElementById('audioFile');
+    const backgroundImageInput = document.getElementById('backgroundImage');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startRecording');
+    const stopBtn = document.getElementById('stopRecording');
+    const downloadLink = document.getElementById('downloadLink');
+    const downloadAudioLink = document.getElementById('downloadAudioLink');
+    const barLayoutSelect = document.getElementById('barLayout');
+    const barColorInput = document.getElementById('barColor');
+    const particleColorInput = document.getElementById('particleColor');
+    const particleToggleSelect = document.getElementById('particleToggle');
+    const resetSettingsBtn = document.getElementById('resetSettings');
+    const textInput = document.getElementById('textInput');
+    const fontSelect = document.getElementById('fontSelect');
+    const textColorInput = document.getElementById('textColor');
+    const logoUpload = document.getElementById('logoUpload');
+    const watermarkPositionSelect = document.getElementById('watermarkPosition');
 
-        canvas.width = 800;
-        canvas.height = 400;
+    // Visible canvas size (fixed for display)
+    const displayWidth = 800;
+    const displayHeight = 400;
+    canvas.width = displayWidth;
+    canvas.height = displayHeight;
 
-        let audioContext, analyser, source, dataArray, recorder, chunks = [];
-        let backgroundImage = null;
-        let particles = [];
-        let barLayout = 'linear';
-        let barColor = '#6e44ff';
-        let particleColor = '#ffffff';
-        let enableParticles = true;
-        let customText = '';
-        let customFont = 'Calibri, sans-serif';
-        let customTextColor = '#ffffff';
-        let logoImage = null;
-        let watermarkPosition = 'upperleft';
-        let audioBlob = null;
-        let audioElement = null;
+    // Off-screen canvas for recording
+    const offScreenCanvas = document.createElement('canvas');
+    const offScreenCtx = offScreenCanvas.getContext('2d');
+    let selectedQuality = '720'; // Default quality
+    let recordingWidth = 1280; // Default to 720p
+    let recordingHeight = 720;
+    offScreenCanvas.width = recordingWidth;
+    offScreenCanvas.height = recordingHeight;
 
-        // Event Listeners for Settings
-        barLayoutSelect.addEventListener('change', (e) => {
-            barLayout = e.target.value;
-        });
+    let audioContext, analyser, source, dataArray, recorder, chunks = [];
+    let backgroundImage = null;
+    let particles = [];
+    let barLayout = 'linear';
+    let barColor = '#6e44ff';
+    let particleColor = '#ffffff';
+    let enableParticles = true;
+    let customText = '';
+    let customFont = 'Calibri, sans-serif';
+    let customTextColor = '#ffffff';
+    let logoImage = null;
+    let watermarkPosition = 'upperleft';
+    let audioBlob = null;
+    let audioElement = null;
 
-        barColorInput.addEventListener('input', (e) => {
-            barColor = e.target.value;
-        });
+    // Event Listeners for Settings
+    barLayoutSelect.addEventListener('change', (e) => { barLayout = e.target.value; });
+    barColorInput.addEventListener('input', (e) => { barColor = e.target.value; });
+    particleColorInput.addEventListener('input', (e) => { particleColor = e.target.value; });
+    particleToggleSelect.addEventListener('change', (e) => { enableParticles = e.target.value === 'true'; });
+    textInput.addEventListener('input', (e) => { customText = e.target.value; });
+    fontSelect.addEventListener('change', (e) => { customFont = e.target.value; });
+    textColorInput.addEventListener('input', (e) => { customTextColor = e.target.value; });
+    logoUpload.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() { logoImage = img; };
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    watermarkPositionSelect.addEventListener('change', (e) => { watermarkPosition = e.target.value; });
+    resetSettingsBtn.addEventListener('click', () => {
+        barLayoutSelect.value = 'linear';
+        barColorInput.value = '#6e44ff';
+        particleColorInput.value = '#ffffff';
+        particleToggleSelect.value = 'true';
+        textInput.value = '';
+        fontSelect.value = 'Calibri, sans-serif';
+        textColorInput.value = '#ffffff';
+        logoUpload.value = '';
+        watermarkPositionSelect.value = 'upperleft';
+        barLayout = 'linear';
+        barColor = '#6e44ff';
+        particleColor = '#ffffff';
+        enableParticles = true;
+        customText = '';
+        customFont = 'Calibri, sans-serif';
+        customTextColor = '#ffffff';
+        logoImage = null;
+        watermarkPosition = 'upperleft';
+    });
 
-        particleColorInput.addEventListener('input', (e) => {
-            particleColor = e.target.value;
-        });
+    // Handle background image upload
+    backgroundImageInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() { backgroundImage = img; };
+            };
+            reader.readAsDataURL(file);
+        }
+    });
 
-        particleToggleSelect.addEventListener('change', (e) => {
-            enableParticles = e.target.value === 'true';
-        });
+    // Handle audio file upload with error handling
+    audioFileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file && file.type.startsWith('audio/')) {
+            audioElement = new Audio();
+            audioElement.src = URL.createObjectURL(file);
+            audioElement.controls = true;
+            document.body.appendChild(audioElement);
+            audioElement.play();
+            setupAudioContext(audioElement);
+            audioBlob = file;
+            prepareAudioDownloadLink(file);
+        } else {
+            alert("Please upload a valid audio file.");
+        }
+    });
 
-        textInput.addEventListener('input', (e) => {
-            customText = e.target.value;
-        });
+    // Prepare the audio download link
+    function prepareAudioDownloadLink(file) {
+        const audioURL = URL.createObjectURL(file);
+        downloadAudioLink.href = audioURL;
+        downloadAudioLink.download = 'audio_file.mp3';
+        downloadAudioLink.style.display = 'block';
+    }
 
-        fontSelect.addEventListener('change', (e) => {
-            customFont = e.target.value;
-        });
+    // Set up audio context and analyzer
+    function setupAudioContext(audio) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        source = audioContext.createMediaElementSource(audio);
+        source.connect(analyser);
+        source.connect(audioContext.destination);
+        drawVisualizer();
+    }
 
-        textColorInput.addEventListener('input', (e) => {
-            customTextColor = e.target.value;
-        });
+    // Draw the visualizer
+    function drawVisualizer() {
+        requestAnimationFrame(drawVisualizer);
+        analyser.getByteFrequencyData(dataArray);
 
-        logoUpload.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.src = e.target.result;
-                    img.onload = function() {
-                        logoImage = img;
-                    };
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        // Clear both canvases
+        ctx.clearRect(0, 0, displayWidth, displayHeight);
+        offScreenCtx.clearRect(0, 0, recordingWidth, recordingHeight);
 
-        watermarkPositionSelect.addEventListener('change', (e) => {
-            watermarkPosition = e.target.value;
-        });
+        const highFrequency = dataArray.slice(-10).reduce((a, b) => a + b, 0) / 10;
+        const shakeIntensity = Math.min(highFrequency / 255 * 10, 5);
+        const offsetX = (Math.random() - 0.5) * shakeIntensity;
+        const offsetY = (Math.random() - 0.5) * shakeIntensity;
 
-        resetSettingsBtn.addEventListener('click', () => {
-            barLayoutSelect.value = 'linear';
-            barColorInput.value = '#6e44ff';
-            particleColorInput.value = '#ffffff';
-            particleToggleSelect.value = 'true';
-            textInput.value = '';
-            fontSelect.value = 'Calibri, sans-serif';
-            textColorInput.value = '#ffffff';
-            logoUpload.value = '';
-            watermarkPositionSelect.value = 'upperleft';
-            barLayout = 'linear';
-            barColor = '#6e44ff';
-            particleColor = '#ffffff';
-            enableParticles = true;
-            customText = '';
-            customFont = 'Calibri, sans-serif';
-            customTextColor = '#ffffff';
-            logoImage = null;
-            watermarkPosition = 'upperleft';
-        });
+        // Draw background on both canvases
+        if (backgroundImage) {
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.drawImage(backgroundImage, 0, 0, displayWidth, displayHeight);
+            ctx.restore();
 
-        // Handle background image upload
-        backgroundImageInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.src = e.target.result;
-                    img.onload = function() {
-                        backgroundImage = img;
-                    };
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // Handle audio file upload with error handling
-        audioFileInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file && file.type.startsWith('audio/')) {
-                audioElement = new Audio();
-                audioElement.src = URL.createObjectURL(file);
-                audioElement.controls = true;
-                document.body.appendChild(audioElement);
-                audioElement.play();
-                setupAudioContext(audioElement);
-                audioBlob = file; // Store the audio file blob
-                prepareAudioDownloadLink(file);
-            } else {
-                alert("Please upload a valid audio file.");
-            }
-        });
-
-        // Prepare the audio download link
-        function prepareAudioDownloadLink(file) {
-            const audioURL = URL.createObjectURL(file);
-            downloadAudioLink.href = audioURL;
-            downloadAudioLink.download = 'audio_file.mp3'; // Adjust the file name and extension as needed
-            downloadAudioLink.style.display = 'block';
+            offScreenCtx.save();
+            offScreenCtx.translate(offsetX * (recordingWidth / displayWidth), offsetY * (recordingHeight / displayHeight));
+            offScreenCtx.drawImage(backgroundImage, 0, 0, recordingWidth, recordingHeight);
+            offScreenCtx.restore();
         }
 
-        // Set up audio context and analyzer
-        function setupAudioContext(audio) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-            source = audioContext.createMediaElementSource(audio);
-            source.connect(analyser);
-            source.connect(audioContext.destination);
-            drawVisualizer();
+        // Draw visual elements on both canvases based on selected layout
+        switch (barLayout) {
+            case 'linear': drawLinearBars(ctx, displayWidth, displayHeight); drawLinearBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'vertical': drawVerticalBars(ctx, displayWidth, displayHeight); drawVerticalBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'circular': drawCircularBars(ctx, displayWidth, displayHeight); drawCircularBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'center': drawCenterBars(ctx, displayWidth, displayHeight); drawCenterBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'radial': drawRadialBars(ctx, displayWidth, displayHeight); drawRadialBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'logarithmic': drawLogarithmicBars(ctx, displayWidth, displayHeight); drawLogarithmicBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'spiral': drawSpiralBars(ctx, displayWidth, displayHeight); drawSpiralBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'gradient': drawGradientBars(ctx, displayWidth, displayHeight); drawGradientBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'discrete': drawDiscreteBars(ctx, displayWidth, displayHeight); drawDiscreteBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'waveform': drawWaveformBars(ctx, displayWidth, displayHeight); drawWaveformBars(offScreenCtx, recordingWidth, recordingHeight); break;
+            case 'branching': drawBranchingBars(ctx, displayWidth, displayHeight); drawBranchingBars(offScreenCtx, recordingWidth, recordingHeight); break;
         }
 
-        // Draw the visualizer
-        function drawVisualizer() {
-            requestAnimationFrame(drawVisualizer);
-            analyser.getByteFrequencyData(dataArray);
-
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Background vibration effect
-            const highFrequency = dataArray.slice(-10).reduce((a, b) => a + b, 0) / 10;
-            const shakeIntensity = Math.min(highFrequency / 255 * 10, 5); // Adjust intensity
-            const offsetX = (Math.random() - 0.5) * shakeIntensity;
-            const offsetY = (Math.random() - 0.5) * shakeIntensity;
-
-            // Draw background image with vibration effect
-            if (backgroundImage) {
-                ctx.save();
-                ctx.translate(offsetX, offsetY);
-                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
-                ctx.restore();
-            }
-
-            // Draw bars based on layout
-            switch (barLayout) {
-                case 'linear':
-                    drawLinearBars();
-                    break;
-                case 'vertical':
-                    drawVerticalBars();
-                    break;
-                case 'circular':
-                    drawCircularBars();
-                    break;
-                case 'center':
-                    drawCenterBars();
-                    break;
-            }
-
-            // Draw particles if enabled
-            if (enableParticles) {
-                drawParticles();
-            }
-
-            // Draw watermark
-            drawWatermark();
-
-            // Draw custom text and logo in the center
-            drawCustomTextAndLogo();
+        if (enableParticles) {
+            drawParticles(ctx, displayWidth, displayHeight);
+            drawParticles(offScreenCtx, recordingWidth, recordingHeight);
         }
+        drawWatermark(ctx, displayWidth, displayHeight);
+        drawWatermark(offScreenCtx, recordingWidth, recordingHeight);
+        drawCustomTextAndLogo(ctx, displayWidth, displayHeight);
+        drawCustomTextAndLogo(offScreenCtx, recordingWidth, recordingHeight);
+    }
 
-        // Draw linear bars (horizontal)
-        function drawLinearBars() {
-            const barWidth = (canvas.width / dataArray.length) * 2.5;
-            let barHeight, x = 0;
-
-            for (let i = 0; i < dataArray.length; i++) {
-                barHeight = dataArray[i];
-                ctx.fillStyle = barColor;
-                ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
-                x += barWidth + 1;
-            }
+    // Existing draw functions
+    function drawLinearBars(context, width, height) {
+        const barWidth = (width / dataArray.length) * 2.5;
+        let barHeight, x = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            barHeight = dataArray[i];
+            context.fillStyle = barColor;
+            context.fillRect(x, height - barHeight / 2, barWidth, barHeight / 2);
+            x += barWidth + 1;
         }
-
-        // Draw vertical bars
-        function drawVerticalBars() {
-            const barHeight = (canvas.height / dataArray.length) * 2.5;
-            let barWidth, y = 0;
-
-            for (let i = 0; i < dataArray.length; i++) {
-                barWidth = dataArray[i];
-                ctx.fillStyle = barColor;
-                ctx.fillRect(canvas.width - barWidth / 2, y, barWidth / 2, barHeight);
-                y += barHeight + 1;
-            }
+    }
+    function drawVerticalBars(context, width, height) {
+        const barHeight = (height / dataArray.length) * 2.5;
+        let barWidth, y = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            barWidth = dataArray[i];
+            context.fillStyle = barColor;
+            context.fillRect(width - barWidth / 2, y, barWidth / 2, barHeight);
+            y += barHeight + 1;
         }
-
-        // Draw circular bars
-        function drawCircularBars() {
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radius = Math.min(canvas.width, canvas.height) / 3;
-            const angleStep = (Math.PI * 2) / dataArray.length;
-
-            for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = dataArray[i] / 2;
-                const angle = i * angleStep;
-                const x1 = centerX + Math.cos(angle) * radius;
-                const y1 = centerY + Math.sin(angle) * radius;
-                const x2 = centerX + Math.cos(angle) * (radius + barHeight);
-                const y2 = centerY + Math.sin(angle) * (radius + barHeight);
-
-                ctx.strokeStyle = barColor;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-            }
+    }
+    function drawCircularBars(context, width, height) {
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = Math.min(width, height) / 3;
+        const angleStep = (Math.PI * 2) / dataArray.length;
+        for (let i = 0; i < dataArray.length; i++) {
+            const barHeight = dataArray[i] / 2;
+            const angle = i * angleStep;
+            const x1 = centerX + Math.cos(angle) * radius;
+            const y1 = centerY + Math.sin(angle) * radius;
+            const x2 = centerX + Math.cos(angle) * (radius + barHeight);
+            const y2 = centerY + Math.sin(angle) * (radius + barHeight);
+            context.strokeStyle = barColor;
+            context.lineWidth = 2;
+            context.beginPath();
+            context.moveTo(x1, y1);
+            context.lineTo(x2, y2);
+            context.stroke();
         }
-
-        // Draw center bars
-        function drawCenterBars() {
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const barWidth = (canvas.width / dataArray.length) * 2.5;
-            let barHeight, x = centerX - (dataArray.length * barWidth) / 2;
-
-            for (let i = 0; i < dataArray.length; i++) {
-                barHeight = dataArray[i];
-                ctx.fillStyle = barColor;
-                ctx.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
-                x += barWidth + 1;
-            }
-        }
-
-        // Draw particles
-        function drawParticles() {
-    for (let i = 0; i < dataArray.length; i++) {
-        if (dataArray[i] > 150) {
-            particles.push(new Particle(
-                Math.random() * canvas.width,
-                Math.random() * canvas.height,
-                Math.random() * 3,
-                particleColor,
-                { x: (Math.random() - 0.5) * 2, y: -Math.random() * 2 } // Corrected line
-            ));
+    }
+    function drawCenterBars(context, width, height) {
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const barWidth = (width / dataArray.length) * 2.5;
+        let barHeight, x = centerX - (dataArray.length * barWidth) / 2;
+        for (let i = 0; i < dataArray.length; i++) {
+            barHeight = dataArray[i];
+            context.fillStyle = barColor;
+            context.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
+            x += barWidth + 1;
         }
     }
 
-    particles.forEach((particle, index) => {
-        if (particle.alpha <= 0) {
-            particles.splice(index, 1);
-        } else {
-            particle.update();
+    // New draw functions for additional bar layouts
+    function drawRadialBars(context, width, height) {
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const maxRadius = Math.min(width, height) / 2;
+        const angleStep = (Math.PI * 2) / dataArray.length;
+        for (let i = 0; i < dataArray.length; i++) {
+            const value = dataArray[i] / 255;
+            const radius = maxRadius * value;
+            const angle = i * angleStep;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            context.beginPath();
+            context.moveTo(centerX, centerY);
+            context.lineTo(x, y);
+            context.strokeStyle = barColor;
+            context.lineWidth = 2;
+            context.stroke();
         }
-    });
-}
+    }
 
-        // Draw watermark
-        function drawWatermark() {
-            ctx.font = 'bold 24px "Segoe UI", Arial, sans-serif';
-            const padding = 10;
-            let x, y;
-
-            switch (watermarkPosition) {
-                case 'upperleft':
-                    x = padding;
-                    y = padding + 24;
-                    break;
-                case 'upperright':
-                    x = canvas.width - ctx.measureText('AUTO ED').width - padding;
-                    y = padding + 24;
-                    break;
-                case 'downleft':
-                    x = padding;
-                    y = canvas.height - padding;
-                    break;
-                case 'downright':
-                    x = canvas.width - ctx.measureText('AUTO ED').width - padding;
-                    y = canvas.height - padding;
-                    break;
-            }
-
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText('AUTO', x, y);
-            const autoWidth = ctx.measureText('AUTO ').width;
-            ctx.fillStyle = '#ff0000';
-            ctx.fillText('ED', x + autoWidth, y);
+    function drawLogarithmicBars(context, width, height) {
+        const barWidth = width / dataArray.length;
+        let x = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            const value = Math.log1p(dataArray[i]) * 50; // Logarithmic scaling
+            context.fillStyle = barColor;
+            context.fillRect(x, height - value, barWidth, value);
+            x += barWidth + 1;
         }
+    }
 
-        // Draw custom text and logo in the center
-        function drawCustomTextAndLogo() {
-            if (customText || logoImage) {
-                ctx.save();
-                ctx.translate(canvas.width / 2, canvas.height / 2);
+    function drawSpiralBars(context, width, height) {
+        const centerX = width / 2;
+        const centerY = height / 2;
+        let angle = 0;
+        const spiralStep = 0.1;
+        const maxRadius = Math.min(width, height) / 2;
+        for (let i = 0; i < dataArray.length; i++) {
+            const value = dataArray[i] / 255;
+            const radius = (i / dataArray.length) * maxRadius * value;
+            angle += spiralStep;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            context.beginPath();
+            context.arc(x, y, 5, 0, Math.PI * 2);
+            context.fillStyle = barColor;
+            context.fill();
+        }
+    }
 
-                // Draw logo
-                if (logoImage) {
-                    const logoSize = 100; // Adjust size as needed
-                    ctx.drawImage(logoImage, -logoSize / 2, -logoSize / 2 - 50, logoSize, logoSize);
-                }
+    function drawGradientBars(context, width, height) {
+        const barWidth = width / dataArray.length;
+        let x = 0;
+        const gradient = context.createLinearGradient(0, height, 0, 0);
+        gradient.addColorStop(0, barColor);
+        gradient.addColorStop(1, '#ffffff');
+        for (let i = 0; i < dataArray.length; i++) {
+            const barHeight = dataArray[i];
+            context.fillStyle = gradient;
+            context.fillRect(x, height - barHeight, barWidth, barHeight);
+            x += barWidth + 1;
+        }
+    }
 
-                // Draw text
-                if (customText) {
-                    ctx.font = `24px ${customFont}`;
-                    ctx.fillStyle = customTextColor;
-                    ctx.textAlign = 'center';
-                    ctx.fillText(customText, 0, 30); // Adjust position as needed
-                }
+    function drawDiscreteBars(context, width, height) {
+        const barWidth = width / dataArray.length;
+        let x = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            const value = Math.floor(dataArray[i] / 51) * 51; // Discrete steps (0, 51, 102, 153, 204, 255)
+            context.fillStyle = barColor;
+            context.fillRect(x, height - value, barWidth, value);
+            x += barWidth + 1;
+        }
+    }
 
-                ctx.restore();
+    function drawWaveformBars(context, width, height) {
+        context.beginPath();
+        const barWidth = width / dataArray.length;
+        let x = 0;
+        context.moveTo(0, height / 2);
+        for (let i = 0; i < dataArray.length; i++) {
+            const value = (dataArray[i] - 128) / 128 * (height / 4); // Center around midpoint
+            context.lineTo(x, height / 2 + value);
+            x += barWidth;
+        }
+        context.strokeStyle = barColor;
+        context.lineWidth = 2;
+        context.stroke();
+    }
+
+    function drawBranchingBars(context, width, height) {
+        const centerX = width / 2;
+        const centerY = height;
+        const angleStep = Math.PI / (dataArray.length - 1);
+        for (let i = 0; i < dataArray.length; i++) {
+            const value = dataArray[i] / 255 * height / 2;
+            const angle = -Math.PI / 2 + i * angleStep;
+            const x = centerX + Math.cos(angle) * value;
+            const y = centerY + Math.sin(angle) * value;
+            context.beginPath();
+            context.moveTo(centerX, centerY);
+            context.lineTo(x, y);
+            context.strokeStyle = barColor;
+            context.lineWidth = 2;
+            context.stroke();
+        }
+    }
+
+    // Particle drawing
+    function drawParticles(context, width, height) {
+        for (let i = 0; i < dataArray.length; i++) {
+            if (dataArray[i] > 150) {
+                particles.push(new Particle(Math.random() * width, Math.random() * height, Math.random() * 3, particleColor, { x: (Math.random() - 0.5) * 2, y: -Math.random() * 2 }));
             }
         }
+        particles.forEach((particle, index) => {
+            if (particle.alpha <= 0) { particles.splice(index, 1); } else { particle.update(context); }
+        });
+    }
 
-        // Particle class
-        class Particle {
-            constructor(x, y, radius, color, velocity) {
-                this.x = x;
-                this.y = y;
-                this.radius = radius;
-                this.color = color;
-                this.velocity = velocity;
-                this.alpha = 1;
-            }
-
-            draw() {
-                ctx.save();
-                ctx.globalAlpha = this.alpha;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-                ctx.fillStyle = this.color;
-                ctx.fill();
-                ctx.restore();
-            }
-
-            update() {
-                this.draw();
-                this.x += this.velocity.x;
-                this.y += this.velocity.y;
-                this.alpha -= 0.01;
-            }
+    function drawWatermark(context, width, height) {
+        context.font = 'bold 24px "Segoe UI", Arial, sans-serif';
+        const padding = 10;
+        let x, y;
+        switch (watermarkPosition) {
+            case 'upperleft': x = padding; y = padding + 24; break;
+            case 'upperright': x = width - context.measureText('AUTO ED').width - padding; y = padding + 24; break;
+            case 'downleft': x = padding; y = height - padding; break;
+            case 'downright': x = width - context.measureText('AUTO ED').width - padding; y = height - padding; break;
         }
+        context.fillStyle = '#ffffff';
+        context.fillText('AUTO', x, y);
+        const autoWidth = context.measureText('AUTO ').width;
+        context.fillStyle = '#ff0000';
+        context.fillText('ED', x + autoWidth, y);
+    }
 
-        // Handle recording
-        startBtn.addEventListener('click', function () {
+    function drawCustomTextAndLogo(context, width, height) {
+        if (customText || logoImage) {
+            context.save();
+            context.translate(width / 2, height / 2);
+            if (logoImage) {
+                const logoSize = 100;
+                context.drawImage(logoImage, -logoSize / 2, -logoSize / 2 - 50, logoSize, logoSize);
+            }
+            if (customText) {
+                context.font = `24px ${customFont}`;
+                context.fillStyle = customTextColor;
+                context.textAlign = 'center';
+                context.fillText(customText, 0, 30);
+            }
+            context.restore();
+        }
+    }
+
+    class Particle {
+        constructor(x, y, radius, color, velocity) {
+            this.x = x;
+            this.y = y;
+            this.radius = radius;
+            this.color = color;
+            this.velocity = velocity;
+            this.alpha = 1;
+        }
+        draw(context) {
+            context.save();
+            context.globalAlpha = this.alpha;
+            context.beginPath();
+            context.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+            context.fillStyle = this.color;
+            context.fill();
+            context.restore();
+        }
+        update(context) {
+            this.draw(context);
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+            this.alpha -= 0.01;
+        }
+    }
+
+    // Set recording resolution based on quality
+    function setRecordingResolution(quality) {
+        const resolutionMap = {
+            '1080': { width: 1920, height: 1080 },
+            '720': { width: 1280, height: 720 },
+            '360': { width: 640, height: 360 },
+            '240': { width: 426, height: 240 },
+            '140': { width: 256, height: 144 }
+        };
+        const { width, height } = resolutionMap[quality] || resolutionMap['720'];
+        offScreenCanvas.width = width;
+        offScreenCanvas.height = height;
+        recordingWidth = width;
+        recordingHeight = height;
+    }
+
+    // Show quality selection popup before recording
+    function showQualityPopupBeforeRecording(callback) {
+        const popup = document.createElement('div');
+        popup.style.position = 'fixed';
+        popup.style.top = '50%';
+        popup.style.left = '50%';
+        popup.style.transform = 'translate(-50%, -50%)';
+        popup.style.background = '#fff';
+        popup.style.padding = '20px';
+        popup.style.borderRadius = '10px';
+        popup.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+        popup.style.zIndex = '1000';
+
+        popup.innerHTML = `
+            <h3>Select Video Quality</h3>
+            <button data-quality="1080" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">1080HD</button>
+            <button data-quality="720" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">720p</button>
+            <button data-quality="360" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">360p</button>
+            <button data-quality="240" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">240p</button>
+            <button data-quality="140" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">140p</button>
+        `;
+
+        document.body.appendChild(popup);
+
+        popup.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', () => {
+                selectedQuality = button.getAttribute('data-quality');
+                setRecordingResolution(selectedQuality);
+                document.body.removeChild(popup);
+                callback();
+            });
+        });
+    }
+
+    // Handle recording with off-screen canvas
+    startBtn.addEventListener('click', function () {
+        if (!audioElement) {
+            alert("Please upload an audio file first.");
+            return;
+        }
+        showQualityPopupBeforeRecording(() => {
             chunks = [];
-            const stream = canvas.captureStream(30); // 30 FPS
+            const stream = offScreenCanvas.captureStream(30);
             const audioStream = audioElement.captureStream();
             const combinedStream = new MediaStream([...stream.getTracks(), ...audioStream.getTracks()]);
             recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
@@ -646,22 +756,23 @@
                 const blob = new Blob(chunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 downloadLink.href = url;
-                downloadLink.download = 'audio_visualization.webm';
+                downloadLink.download = `audio_visualization_${selectedQuality}p.webm`;
                 downloadLink.style.display = 'block';
             };
 
-            recorder.start(100); // Capture data every 100ms
+            recorder.start(100);
             startBtn.disabled = true;
             stopBtn.disabled = false;
         });
+    });
 
-        stopBtn.addEventListener('click', function () {
-            if (recorder && recorder.state === 'recording') {
-                recorder.stop();
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-            }
-        });
-    </script>
+    stopBtn.addEventListener('click', function () {
+        if (recorder && recorder.state === 'recording') {
+            recorder.stop();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        }
+    });
+</script>
 </body>
 </html>
