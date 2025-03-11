@@ -3,13 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AUDIO SPRECTRUM Cr.</title>
+<title>AUDIO SPECTRUM Creator</title>
 <link rel="icon" href="favicon.ico" type="image/x-icon">
-<meta property="og:title" content="AUDIO SPECTRUM Cr.">
-<meta property="og:description" content="Create professional audio spectrum's in an easy, fast, and efficient way.">
-<meta property="og:image" content="https://www.yoursite.com/path-to-your-image.jpg">
-<meta property="og:url" content="https://www.yoursite.com/your-page">
-<meta property="og:type" content="SPECTRUM CREATOR">
 <style>
 /* General Styles */
 body {
@@ -657,5 +652,8 @@ async function convertWebMtoMP4(webmBlob) {
     return new Blob([data.buffer], { type: 'video/mp4' });
 }
 </script>
+
+<!-- Include ffmpeg.js -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js"></script>
 </body>
 </html>
