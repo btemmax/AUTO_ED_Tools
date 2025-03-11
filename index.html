@@ -1,562 +1,621 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AUDIO SPECTRUM Creator</title>
-<link rel="icon" href="favicon.ico" type="image/x-icon">
-<style>
-/* Add your CSS styles here */
-    /* General Styles */
-body {
-    margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f5f5;
-    color: #333;
-    display: flex;
-    min-height: 100vh;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUDIO SPRECTRUM Cr.</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+ <meta property="og:title" content="AUDIO SPECTRUM Cr.">
+    <meta property="og:description" content="Create proffessional audio spectrum's in easy fast and efficient way.">
+    <meta property="og:image" content="https://www.yoursite.com/path-to-your-image.jpg">
+    <meta property="og:url" content="https://www.yoursite.com/your-page">
+    <meta property="og:type" content="SPECTRUM CREATOR">
+    <style>
+        /* General Styles */
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            display: flex;
+            min-height: 100vh;
+        }
 
-/* Sidebar */
-.sidebar {
-    width: 250px;
-    background: #fff;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-}
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: #fff;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
 
-.sidebar h2 {
-    font-size: 1.5rem;
-    margin-bottom: 20px;
-    color: #0073b1;
-}
+        .sidebar h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #0073b1;
+        }
 
-.sidebar label {
-    display: block;
-    margin: 10px 0 5px;
-    font-weight: bold;
-}
+        .sidebar label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
 
-.sidebar input[type="color"],
-.sidebar select,
-.sidebar button,
-.sidebar input[type="text"],
-.sidebar input[type="file"] {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 1rem;
-}
+        .sidebar input[type="color"],
+        .sidebar select,
+        .sidebar button,
+        .sidebar input[type="text"],
+        .sidebar input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
 
-.sidebar button {
-    background: #0073b1;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: background 0.3s ease;
-}
+        .sidebar button {
+            background: #0073b1;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
 
-.sidebar button:hover {
-    background: #005f8a;
-}
+        .sidebar button:hover {
+            background: #005f8a;
+        }
 
-/* Main Content */
-.main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
-}
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
 
-.main-content h1 {
-    font-size: 2rem;
-    margin-bottom: 20px;
-    color: #0073b1;
-}
+        .main-content h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #0073b1;
+        }
 
-canvas {
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
+        canvas {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
 
-/* Controls */
-.controls {
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-}
+        /* Controls */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
 
-.controls button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    background: #0073b1;
-    color: white;
-    cursor: pointer;
-    transition: background 0.3s ease;
-}
+        .controls button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #0073b1;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
 
-.controls button:hover {
-    background: #005f8a;
-}
+        .controls button:hover {
+            background: #005f8a;
+        }
 
-.controls button:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-}
+        .controls button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
 
-/* Download Link */
-#downloadLink {
-    margin-top: 20px;
-    padding: 10px 20px;
-    background: #0073b1;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    display: none;
-}
+        /* Download Link */
+        #downloadLink {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #0073b1;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            display: none;
+        }
 
-#downloadLink:hover {
-    background: #005f8a;
-}
-
-</style>
+        #downloadLink:hover {
+            background: #005f8a;
+        }
+    </style>
 </head>
 <body>
-<!-- Add your HTML structure here -->
     <!-- Sidebar -->
-<div class="sidebar">
-    <h2>Settings</h2>
+    <div class="sidebar">
+        <h2>Settings</h2>
 
-    <!-- Bar Layout -->
-    <label for="barLayout">Bar Layout</label>
-    <select id="barLayout">
-        <option value="linear">Linear (Horizontal)</option>
-        <option value="vertical">Linear (Vertical)</option>
-        <option value="circular">Circular</option>
-        <option value="center">Center Bars</option>
-    </select>
+        <!-- Bar Layout -->
+        <label for="barLayout">Bar Layout</label>
+        <select id="barLayout">
+            <option value="linear">Linear (Horizontal)</option>
+            <option value="vertical">Linear (Vertical)</option>
+            <option value="circular">Circular</option>
+            <option value="center">Center Bars</option>
+        </select>
 
-    <!-- Bar Color -->
-    <label for="barColor">Bar Color</label>
-    <input type="color" id="barColor" value="#6e44ff">
+        <!-- Bar Color -->
+        <label for="barColor">Bar Color</label>
+        <input type="color" id="barColor" value="#6e44ff">
 
-    <!-- Particle Color -->
-    <label for="particleColor">Particle Color</label>
-    <input type="color" id="particleColor" value="#ffffff">
+        <!-- Particle Color -->
+        <label for="particleColor">Particle Color</label>
+        <input type="color" id="particleColor" value="#ffffff">
 
-    <!-- Particle Effects -->
-    <label for="particleToggle">Enable Particles</label>
-    <select id="particleToggle">
-        <option value="true">Yes</option>
-        <option value="false">No</option>
-    </select>
+        <!-- Particle Effects -->
+        <label for="particleToggle">Enable Particles</label>
+        <select id="particleToggle">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+        </select>
 
-    <!-- Background Image -->
-    <label for="backgroundImage">Background Image</label>
-    <input type="file" id="backgroundImage" accept="image/*">
+        <!-- Background Image -->
+        <label for="backgroundImage">Background Image</label>
+        <input type="file" id="backgroundImage" accept="image/*">
 
-    <!-- Watermark Position -->
-    <label for="watermarkPosition">Watermark Position</label>
-    <select id="watermarkPosition">
-        <option value="upperleft">Upper Left</option>
-        <option value="upperright">Upper Right</option>
-        <option value="downleft">Lower Left</option>
-        <option value="downright">Lower Right</option>
-    </select>
+        <!-- Watermark Position -->
+        <label for="watermarkPosition">Watermark Position</label>
+        <select id="watermarkPosition">
+            <option value="upperleft">Upper Left</option>
+            <option value="upperright">Upper Right</option>
+            <option value="downleft">Lower Left</option>
+            <option value="downright">Lower Right</option>
+        </select>
 
-    <!-- Add Text -->
-    <label for="textInput">Add Text</label>
-    <input type="text" id="textInput" placeholder="Enter text">
+        <!-- Add Text -->
+        <label for="textInput">Add Text</label>
+        <input type="text" id="textInput" placeholder="Enter text">
 
-    <!-- Font Select -->
-    <label for="fontSelect">Font</label>
-    <select id="fontSelect">
-        <option value="Calibri, sans-serif">Calibri</option>
-        <option value="Comfortaa, cursive">Comfortaa</option>
-        <option value="Arial, sans-serif">Arial</option>
-        <option value="Times New Roman, serif">Times New Roman</option>
-        <option value="Courier New, monospace">Courier New</option>
-    </select>
+        <!-- Font Select -->
+        <label for="fontSelect">Font</label>
+        <select id="fontSelect">
+            <option value="Calibri, sans-serif">Calibri</option>
+            <option value="Comfortaa, cursive">Comfortaa</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="Times New Roman, serif">Times New Roman</option>
+            <option value="Courier New, monospace">Courier New</option>
+        </select>
 
-    <!-- Text Color -->
-    <label for="textColor">Text Color</label>
-    <input type="color" id="textColor" value="#ffffff">
+        <!-- Text Color -->
+        <label for="textColor">Text Color</label>
+        <input type="color" id="textColor" value="#ffffff">
 
-    <!-- Upload Logo -->
-    <label for="logoUpload">Upload Logo</label>
-    <input type="file" id="logoUpload" accept="image/*">
+        <!-- Upload Logo -->
+        <label for="logoUpload">Upload Logo</label>
+        <input type="file" id="logoUpload" accept="image/*">
 
-    <!-- Reset Settings -->
-    <button id="resetSettings">Reset Settings</button>
-</div>
-
-<!-- Main Content -->
-<div class="main-content">
-    <h1>AUDIO SPECTRUM Creator</h1>
-    <canvas id="canvas"></canvas>
-
-    <!-- Controls -->
-    <div class="controls">
-        <input type="file" id="audioFile" accept="audio/*">
-        <button id="startRecording">Start Recording</button>
-        <button id="stopRecording" disabled>Stop Recording</button>
+        <!-- Reset Settings -->
+        <button id="resetSettings">Reset Settings</button>
     </div>
 
-    <!-- Download Link -->
-    <a id="downloadLink">Download Video</a>
-    <p>Made by AUTO ED | @2025 | *subscribe to remove watermark</p>
-</div>
+    <!-- Main Content -->
+    <div class="main-content">
+        <h1>AUDIO SPECTRUM Creator</h1>
+        <canvas id="canvas"></canvas>
 
+        <!-- Controls -->
+        <div class="controls">
+            <input type="file" id="audioFile" accept="audio/*">
+            <button id="startRecording">Start Recording</button>
+            <button id="stopRecording" disabled>Stop Recording</button>
+        </div>
 
+        <!-- Download Link -->
+        <a id="downloadLink">Download Video</a>
+<p>Made by AUTO ED | @2025 | *subscribe to remove watermark</p>
+    </div>
 
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js"></script>
-<script>
-const audioFileInput = document.getElementById('audioFile');
-const backgroundImageInput = document.getElementById('backgroundImage');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const startBtn = document.getElementById('startRecording');
-const stopBtn = document.getElementById('stopRecording');
-const downloadLink = document.getElementById('downloadLink');
-const barLayoutSelect = document.getElementById('barLayout');
-const barColorInput = document.getElementById('barColor');
-const particleColorInput = document.getElementById('particleColor');
-const particleToggleSelect = document.getElementById('particleToggle');
-const resetSettingsBtn = document.getElementById('resetSettings');
-const textInput = document.getElementById('textInput');
-const fontSelect = document.getElementById('fontSelect');
-const textColorInput = document.getElementById('textColor');
-const logoUpload = document.getElementById('logoUpload');
-const watermarkPositionSelect = document.getElementById('watermarkPosition');
+    <script>
+        const audioFileInput = document.getElementById('audioFile');
+        const backgroundImageInput = document.getElementById('backgroundImage');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startRecording');
+        const stopBtn = document.getElementById('stopRecording');
+        const downloadLink = document.getElementById('downloadLink');
+        const barLayoutSelect = document.getElementById('barLayout');
+        const barColorInput = document.getElementById('barColor');
+        const particleColorInput = document.getElementById('particleColor');
+        const particleToggleSelect = document.getElementById('particleToggle');
+        const resetSettingsBtn = document.getElementById('resetSettings');
+        const textInput = document.getElementById('textInput');
+        const fontSelect = document.getElementById('fontSelect');
+        const textColorInput = document.getElementById('textColor');
+        const logoUpload = document.getElementById('logoUpload');
+        const watermarkPositionSelect = document.getElementById('watermarkPosition');
 
-canvas.width = 800;
-canvas.height = 400;
+        canvas.width = 800;
+        canvas.height = 400;
 
-let audioContext, analyser, source, dataArray;
-let backgroundImage = null;
-let particles = [];
-let barLayout = 'linear';
-let barColor = '#6e44ff';
-let particleColor = '#ffffff';
-let enableParticles = true;
-let customText = '';
-let customFont = 'Calibri, sans-serif';
-let customTextColor = '#ffffff';
-let logoImage = null;
-let watermarkPosition = 'upperleft';
+        let audioContext, analyser, source, dataArray, recorder, chunks = [];
+        let backgroundImage = null;
+        let particles = [];
+        let barLayout = 'linear';
+        let barColor = '#6e44ff';
+        let particleColor = '#ffffff';
+        let enableParticles = true;
+        let customText = '';
+        let customFont = 'Calibri, sans-serif';
+        let customTextColor = '#ffffff';
+        let logoImage = null;
+        let watermarkPosition = 'upperleft';
 
-// ffmpeg.wasm variables
-let ffmpeg = null;
-let frames = [];
-let isRecording = false;
+        // Event Listeners for Settings
+        barLayoutSelect.addEventListener('change', (e) => {
+            barLayout = e.target.value;
+        });
 
-// Initialize ffmpeg.wasm
-async function initFFmpeg() {
-    const { createFFmpeg, fetchFile } = FFmpeg;
-    ffmpeg = createFFmpeg({ log: true });
-    await ffmpeg.load();
-}
+        barColorInput.addEventListener('input', (e) => {
+            barColor = e.target.value;
+        });
 
-// Start recording
-startBtn.addEventListener('click', async () => {
-    if (!ffmpeg) await initFFmpeg();
-    frames = [];
-    isRecording = true;
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-    console.log("Recording started...");
-});
+        particleColorInput.addEventListener('input', (e) => {
+            particleColor = e.target.value;
+        });
 
-// Stop recording and encode to MP4
-stopBtn.addEventListener('click', async () => {
-    isRecording = false;
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-    console.log("Recording stopped. Encoding to MP4...");
+        particleToggleSelect.addEventListener('change', (e) => {
+            enableParticles = e.target.value === 'true';
+        });
 
-    // Convert frames to a video using ffmpeg.wasm
-    const frameRate = 30; // 30 FPS
-    const inputFileName = 'input_%04d.png';
-    const outputFileName = 'output.mp4';
+        textInput.addEventListener('input', (e) => {
+            customText = e.target.value;
+        });
 
-    // Write frames to ffmpeg's file system
-    for (let i = 0; i < frames.length; i++) {
-        const frameName = `input_${i.toString().padStart(4, '0')}.png`;
-        ffmpeg.FS('writeFile', frameName, await fetchFile(frames[i]));
-    }
+        fontSelect.addEventListener('change', (e) => {
+            customFont = e.target.value;
+        });
 
-    // Run ffmpeg command to create MP4
-    await ffmpeg.run(
-        '-framerate', frameRate.toString(),
-        '-i', inputFileName,
-        '-c:v', 'libx264',
-        '-pix_fmt', 'yuv420p',
-        outputFileName
-    );
+        textColorInput.addEventListener('input', (e) => {
+            customTextColor = e.target.value;
+        });
 
-    // Read the output MP4 file
-    const data = ffmpeg.FS('readFile', outputFileName);
+        logoUpload.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        logoImage = img;
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
-    // Create a download link for the MP4 file
-    const blob = new Blob([data.buffer], { type: 'video/mp4' });
-    const url = URL.createObjectURL(blob);
-    downloadLink.href = url;
-    downloadLink.download = 'audio_visualization.mp4';
-    downloadLink.style.display = 'block';
-    console.log("MP4 file ready for download.");
-});
+        watermarkPositionSelect.addEventListener('change', (e) => {
+            watermarkPosition = e.target.value;
+        });
 
-// Draw the visualizer and capture frames
-function drawVisualizer() {
-    requestAnimationFrame(drawVisualizer);
-    analyser.getByteFrequencyData(dataArray);
+        resetSettingsBtn.addEventListener('click', () => {
+            barLayoutSelect.value = 'linear';
+            barColorInput.value = '#6e44ff';
+            particleColorInput.value = '#ffffff';
+            particleToggleSelect.value = 'true';
+            textInput.value = '';
+            fontSelect.value = 'Calibri, sans-serif';
+            textColorInput.value = '#ffffff';
+            logoUpload.value = '';
+            watermarkPositionSelect.value = 'upperleft';
+            barLayout = 'linear';
+            barColor = '#6e44ff';
+            particleColor = '#ffffff';
+            enableParticles = true;
+            customText = '';
+            customFont = 'Calibri, sans-serif';
+            customTextColor = '#ffffff';
+            logoImage = null;
+            watermarkPosition = 'upperleft';
+        });
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Handle background image upload
+        backgroundImageInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        backgroundImage = img;
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
-    // Draw background image
-    if (backgroundImage) {
-        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
-    }
+        // Handle audio file upload
+        audioFileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const audio = new Audio();
+                audio.src = URL.createObjectURL(file);
+                audio.controls = true;
+                document.body.appendChild(audio);
+                audio.play();
+                setupAudioContext(audio);
+            } else {
+                alert("Please upload a valid audio file.");
+            }
+        });
 
-    // Draw bars based on layout
-    switch (barLayout) {
-        case 'linear':
-            drawLinearBars();
-            break;
-        case 'vertical':
-            drawVerticalBars();
-            break;
-        case 'circular':
-            drawCircularBars();
-            break;
-        case 'center':
-            drawCenterBars();
-            break;
-    }
-
-    // Draw particles if enabled
-    if (enableParticles) {
-        drawParticles();
-    }
-
-    // Draw watermark
-    drawWatermark();
-
-    // Draw custom text and logo in the center
-    drawCustomTextAndLogo();
-
-    // Capture frames if recording
-    if (isRecording) {
-        const frame = canvas.toDataURL('image/png');
-        frames.push(frame);
-    }
-}
-
-// Draw linear bars (horizontal)
-function drawLinearBars() {
-    const barWidth = (canvas.width / dataArray.length) * 2.5;
-    let barHeight, x = 0;
-
-    for (let i = 0; i < dataArray.length; i++) {
-        barHeight = dataArray[i];
-        ctx.fillStyle = barColor;
-        ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
-        x += barWidth + 1;
-    }
-}
-
-// Draw vertical bars
-function drawVerticalBars() {
-    const barHeight = (canvas.height / dataArray.length) * 2.5;
-    let barWidth, y = 0;
-
-    for (let i = 0; i < dataArray.length; i++) {
-        barWidth = dataArray[i];
-        ctx.fillStyle = barColor;
-        ctx.fillRect(canvas.width - barWidth / 2, y, barWidth / 2, barHeight);
-        y += barHeight + 1;
-    }
-}
-
-// Draw circular bars
-function drawCircularBars() {
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = Math.min(canvas.width, canvas.height) / 3;
-    const angleStep = (Math.PI * 2) / dataArray.length;
-
-    for (let i = 0; i < dataArray.length; i++) {
-        const barHeight = dataArray[i] / 2;
-        const angle = i * angleStep;
-        const x1 = centerX + Math.cos(angle) * radius;
-        const y1 = centerY + Math.sin(angle) * radius;
-        const x2 = centerX + Math.cos(angle) * (radius + barHeight);
-        const y2 = centerY + Math.sin(angle) * (radius + barHeight);
-
-        ctx.strokeStyle = barColor;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-    }
-}
-
-// Draw center bars
-function drawCenterBars() {
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const barWidth = (canvas.width / dataArray.length) * 2.5;
-    let barHeight, x = centerX - (dataArray.length * barWidth) / 2;
-
-    for (let i = 0; i < dataArray.length; i++) {
-        barHeight = dataArray[i];
-        ctx.fillStyle = barColor;
-        ctx.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
-        x += barWidth + 1;
-    }
-}
-
-// Draw particles
-function drawParticles() {
-    for (let i = 0; i < dataArray.length; i++) {
-        if (dataArray[i] > 150) {
-            particles.push(new Particle(
-                Math.random() * canvas.width,
-                Math.random() * canvas.height,
-                Math.random() * 3,
-                particleColor,
-                { x: (Math.random() - 0.5) * 2, y: -Math.random() * 2 }
-            ));
-        }
-    }
-
-    particles.forEach((particle, index) => {
-        if (particle.alpha <= 0) {
-            particles.splice(index, 1);
-        } else {
-            particle.update();
-        }
-    });
-}
-
-// Draw watermark
-function drawWatermark() {
-    ctx.font = 'bold 24px "Segoe UI", Arial, sans-serif';
-    const padding = 10;
-    let x, y;
-
-    switch (watermarkPosition) {
-        case 'upperleft':
-            x = padding;
-            y = padding + 24;
-            break;
-        case 'upperright':
-            x = canvas.width - ctx.measureText('AUTO ED').width - padding;
-            y = padding + 24;
-            break;
-        case 'downleft':
-            x = padding;
-            y = canvas.height - padding;
-            break;
-        case 'downright':
-            x = canvas.width - ctx.measureText('AUTO ED').width - padding;
-            y = canvas.height - padding;
-            break;
-    }
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('AUTO', x, y);
-    const autoWidth = ctx.measureText('AUTO ').width;
-    ctx.fillStyle = '#ff0000';
-    ctx.fillText('ED', x + autoWidth, y);
-}
-
-// Draw custom text and logo in the center
-function drawCustomTextAndLogo() {
-    if (customText || logoImage) {
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-
-        // Draw logo
-        if (logoImage) {
-            const logoSize = 100; // Adjust size as needed
-            ctx.drawImage(logoImage, -logoSize / 2, -logoSize / 2 - 50, logoSize, logoSize);
+        // Set up audio context and analyzer
+        function setupAudioContext(audio) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            source = audioContext.createMediaElementSource(audio);
+            source.connect(analyser);
+            source.connect(audioContext.destination);
+            drawVisualizer();
         }
 
-        // Draw text
-        if (customText) {
-            ctx.font = `24px ${customFont}`;
-            ctx.fillStyle = customTextColor;
-            ctx.textAlign = 'center';
-            ctx.fillText(customText, 0, 30); // Adjust position as needed
+        // Draw the visualizer
+        function drawVisualizer() {
+            requestAnimationFrame(drawVisualizer);
+            analyser.getByteFrequencyData(dataArray);
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background vibration effect
+            const highFrequency = dataArray.slice(-10).reduce((a, b) => a + b, 0) / 10;
+            const shakeIntensity = Math.min(highFrequency / 255 * 10, 5); // Adjust intensity
+            const offsetX = (Math.random() - 0.5) * shakeIntensity;
+            const offsetY = (Math.random() - 0.5) * shakeIntensity;
+
+            // Draw background image with vibration effect
+            if (backgroundImage) {
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+
+            // Draw bars based on layout
+            switch (barLayout) {
+                case 'linear':
+                    drawLinearBars();
+                    break;
+                case 'vertical':
+                    drawVerticalBars();
+                    break;
+                case 'circular':
+                    drawCircularBars();
+                    break;
+                case 'center':
+                    drawCenterBars();
+                    break;
+            }
+
+            // Draw particles if enabled
+            if (enableParticles) {
+                drawParticles();
+            }
+
+            // Draw watermark
+            drawWatermark();
+
+            // Draw custom text and logo in the center
+            drawCustomTextAndLogo();
         }
 
-        ctx.restore();
-    }
-}
+        // Draw linear bars (horizontal)
+        function drawLinearBars() {
+            const barWidth = (canvas.width / dataArray.length) * 2.5;
+            let barHeight, x = 0;
 
-// Particle class
-class Particle {
-    constructor(x, y, radius, color, velocity) {
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-        this.color = color;
-        this.velocity = velocity;
-        this.alpha = 1;
-    }
+            for (let i = 0; i < dataArray.length; i++) {
+                barHeight = dataArray[i];
+                ctx.fillStyle = barColor;
+                ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+                x += barWidth + 1;
+            }
+        }
 
-    draw() {
-        ctx.save();
-        ctx.globalAlpha = this.alpha;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.restore();
-    }
+        // Draw vertical bars
+        function drawVerticalBars() {
+            const barHeight = (canvas.height / dataArray.length) * 2.5;
+            let barWidth, y = 0;
 
-    update() {
-        this.draw();
-        this.x += this.velocity.x;
-        this.y += this.velocity.y;
-        this.alpha -= 0.01;
-    }
-}
+            for (let i = 0; i < dataArray.length; i++) {
+                barWidth = dataArray[i];
+                ctx.fillStyle = barColor;
+                ctx.fillRect(canvas.width - barWidth / 2, y, barWidth / 2, barHeight);
+                y += barHeight + 1;
+            }
+        }
 
-// Handle audio file upload
-audioFileInput.addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const audio = new Audio();
-        audio.src = URL.createObjectURL(file);
-        audio.controls = true;
-        document.body.appendChild(audio);
-        audio.play();
-        setupAudioContext(audio);
-    } else {
-        alert("Please upload a valid audio file.");
-    }
-});
+        // Draw circular bars
+        function drawCircularBars() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(canvas.width, canvas.height) / 3;
+            const angleStep = (Math.PI * 2) / dataArray.length;
 
-// Set up audio context and analyzer
-function setupAudioContext(audio) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    dataArray = new Uint8Array(analyser.frequencyBinCount);
-    source = audioContext.createMediaElementSource(audio);
-    source.connect(analyser);
-    source.connect(audioContext.destination);
-    drawVisualizer();
-}
-</script>
+            for (let i = 0; i < dataArray.length; i++) {
+                const barHeight = dataArray[i] / 2;
+                const angle = i * angleStep;
+                const x1 = centerX + Math.cos(angle) * radius;
+                const y1 = centerY + Math.sin(angle) * radius;
+                const x2 = centerX + Math.cos(angle) * (radius + barHeight);
+                const y2 = centerY + Math.sin(angle) * (radius + barHeight);
+
+                ctx.strokeStyle = barColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+        }
+
+        // Draw center bars
+        function drawCenterBars() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const barWidth = (canvas.width / dataArray.length) * 2.5;
+            let barHeight, x = centerX - (dataArray.length * barWidth) / 2;
+
+            for (let i = 0; i < dataArray.length; i++) {
+                barHeight = dataArray[i];
+                ctx.fillStyle = barColor;
+                ctx.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
+                x += barWidth + 1;
+            }
+        }
+
+        // Draw particles
+        function drawParticles() {
+            for (let i = 0; i < dataArray.length; i++) {
+                if (dataArray[i] > 150) {
+                    particles.push(new Particle(
+                        Math.random() * canvas.width,
+                        Math.random() * canvas.height,
+                        Math.random() * 3,
+                        particleColor,
+                        { x: (Math.random() - 0.5) * 2, y: -Math.random() * 2 }
+                    ));
+                }
+            }
+
+            particles.forEach((particle, index) => {
+                if (particle.alpha <= 0) {
+                    particles.splice(index, 1);
+                } else {
+                    particle.update();
+                }
+            });
+        }
+
+        // Draw watermark
+        function drawWatermark() {
+            ctx.font = 'bold 24px "Segoe UI", Arial, sans-serif';
+            const padding = 10;
+            let x, y;
+
+            switch (watermarkPosition) {
+                case 'upperleft':
+                    x = padding;
+                    y = padding + 24;
+                    break;
+                case 'upperright':
+                    x = canvas.width - ctx.measureText('AUTO ED').width - padding;
+                    y = padding + 24;
+                    break;
+                case 'downleft':
+                    x = padding;
+                    y = canvas.height - padding;
+                    break;
+                case 'downright':
+                    x = canvas.width - ctx.measureText('AUTO ED').width - padding;
+                    y = canvas.height - padding;
+                    break;
+            }
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('AUTO', x, y);
+            const autoWidth = ctx.measureText('AUTO ').width;
+            ctx.fillStyle = '#ff0000';
+            ctx.fillText('ED', x + autoWidth, y);
+        }
+
+        // Draw custom text and logo in the center
+        function drawCustomTextAndLogo() {
+            if (customText || logoImage) {
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+
+                // Draw logo
+                if (logoImage) {
+                    const logoSize = 100; // Adjust size as needed
+                    ctx.drawImage(logoImage, -logoSize / 2, -logoSize / 2 - 50, logoSize, logoSize);
+                }
+
+                // Draw text
+                if (customText) {
+                    ctx.font = `24px ${customFont}`;
+                    ctx.fillStyle = customTextColor;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(customText, 0, 30); // Adjust position as needed
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Particle class
+        class Particle {
+            constructor(x, y, radius, color, velocity) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.velocity = velocity;
+                this.alpha = 1;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.draw();
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.01;
+            }
+        }
+
+        // Handle recording
+        startBtn.addEventListener('click', function() {
+            chunks = [];
+            const stream = canvas.captureStream(30); // 30 FPS
+            recorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    chunks.push(e.data);
+                }
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                downloadLink.href = url;
+                downloadLink.download = 'audio_visualization.webm';
+                downloadLink.style.display = 'block';
+            };
+
+            recorder.start(100); // Capture data every 100ms
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+        });
+
+        stopBtn.addEventListener('click', function() {
+            if (recorder && recorder.state === 'recording') {
+                recorder.stop();
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        });
+    </script>
 </body>
 </html>
