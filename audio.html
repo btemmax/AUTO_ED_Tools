@@ -242,6 +242,7 @@
         <a id="downloadAudioLink">Download Audio</a>
         <p>Made by AUTO ED | @2025 | *subscribe to remove watermark</p>
     </div>
+
 <script>
     const audioFileInput = document.getElementById('audioFile');
     const backgroundImageInput = document.getElementById('backgroundImage');
@@ -291,6 +292,19 @@
     let watermarkPosition = 'upperleft';
     let audioBlob = null;
     let audioElement = null;
+    let lastFrameTime = 0;
+    const targetFPS = 60; // Increased to 60 FPS
+    const frameInterval = 1000 / targetFPS; // ~16.67ms per frame
+
+    // Cached background canvas for performance
+    const backgroundCanvas = document.createElement('canvas');
+    backgroundCanvas.width = displayWidth;
+    backgroundCanvas.height = displayHeight;
+    const backgroundCtx = backgroundCanvas.getContext('2d');
+    const offScreenBackgroundCanvas = document.createElement('canvas');
+    offScreenBackgroundCanvas.width = recordingWidth;
+    offScreenBackgroundCanvas.height = recordingHeight;
+    const offScreenBackgroundCtx = offScreenBackgroundCanvas.getContext('2d');
 
     // Event Listeners for Settings
     barLayoutSelect.addEventListener('change', (e) => { barLayout = e.target.value; });
@@ -334,7 +348,7 @@
         watermarkPosition = 'upperleft';
     });
 
-    // Handle background image upload
+    // Handle background image upload with caching
     backgroundImageInput.addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (file) {
@@ -342,7 +356,13 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.src = e.target.result;
-                img.onload = function() { backgroundImage = img; };
+                img.onload = function() {
+                    backgroundImage = img;
+                    backgroundCtx.clearRect(0, 0, displayWidth, displayHeight);
+                    backgroundCtx.drawImage(img, 0, 0, displayWidth, displayHeight);
+                    offScreenBackgroundCtx.clearRect(0, 0, recordingWidth, recordingHeight);
+                    offScreenBackgroundCtx.drawImage(img, 0, 0, recordingWidth, recordingHeight);
+                };
             };
             reader.readAsDataURL(file);
         }
@@ -377,7 +397,7 @@
     function setupAudioContext(audio) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
+        analyser.fftSize = 128; // Reduced FFT size for better performance at 60 FPS
         dataArray = new Uint8Array(analyser.frequencyBinCount);
         source = audioContext.createMediaElementSource(audio);
         source.connect(analyser);
@@ -385,79 +405,103 @@
         drawVisualizer();
     }
 
-    // Draw the visualizer
-    function drawVisualizer() {
-        requestAnimationFrame(drawVisualizer);
+    // Optimized drawVisualizer for 60 FPS
+    function drawVisualizer(timestamp) {
+        if (!timestamp) timestamp = performance.now();
+        if (timestamp - lastFrameTime < frameInterval) {
+            requestAnimationFrame(drawVisualizer);
+            return; // Skip frame if too soon
+        }
+        lastFrameTime = timestamp;
+
         analyser.getByteFrequencyData(dataArray);
 
-        // Clear both canvases
+        // Clear canvases
         ctx.clearRect(0, 0, displayWidth, displayHeight);
         offScreenCtx.clearRect(0, 0, recordingWidth, recordingHeight);
 
-        const highFrequency = dataArray.slice(-10).reduce((a, b) => a + b, 0) / 10;
-        const shakeIntensity = Math.min(highFrequency / 255 * 10, 5);
+        // Draw cached background
+        if (backgroundImage) {
+            ctx.drawImage(backgroundCanvas, 0, 0);
+            offScreenCtx.drawImage(offScreenBackgroundCanvas, 0, 0);
+        }
+
+        // Calculate bass intensity
+        const bassRange = Math.floor(dataArray.length / 3);
+        const bassLevel = dataArray.slice(0, bassRange).reduce((a, b) => a + b, 0) / bassRange / 255;
+        const shakeIntensity = Math.min(bassLevel * 10, 8); // Reduced max shake for performance
+        const vignetteIntensity = Math.min(bassLevel * 0.5, 0.4); // Reduced vignette for 60 FPS
         const offsetX = (Math.random() - 0.5) * shakeIntensity;
         const offsetY = (Math.random() - 0.5) * shakeIntensity;
 
-        // Draw background on both canvases
-        if (backgroundImage) {
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            ctx.drawImage(backgroundImage, 0, 0, displayWidth, displayHeight);
-            ctx.restore();
+        // Apply shake to dynamic elements only
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+        offScreenCtx.save();
+        offScreenCtx.translate(offsetX * (recordingWidth / displayWidth), offsetY * (recordingHeight / displayHeight));
 
-            offScreenCtx.save();
-            offScreenCtx.translate(offsetX * (recordingWidth / displayWidth), offsetY * (recordingHeight / displayHeight));
-            offScreenCtx.drawImage(backgroundImage, 0, 0, recordingWidth, recordingHeight);
-            offScreenCtx.restore();
-        }
+        // Draw visual elements based on selected layout
+        const drawFunc = {
+            'linear': drawLinearBars,
+            'vertical': drawVerticalBars,
+            'circular': drawCircularBars,
+            'center': drawCenterBars,
+            'radial': drawRadialBars,
+            'logarithmic': drawLogarithmicBars,
+            'spiral': drawSpiralBars,
+            'gradient': drawGradientBars,
+            'discrete': drawDiscreteBars,
+            'waveform': drawWaveformBars,
+            'branching': drawBranchingBars
+        }[barLayout];
+        drawFunc(ctx, displayWidth, displayHeight);
+        drawFunc(offScreenCtx, recordingWidth, recordingHeight);
 
-        // Draw visual elements on both canvases based on selected layout
-        switch (barLayout) {
-            case 'linear': drawLinearBars(ctx, displayWidth, displayHeight); drawLinearBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'vertical': drawVerticalBars(ctx, displayWidth, displayHeight); drawVerticalBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'circular': drawCircularBars(ctx, displayWidth, displayHeight); drawCircularBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'center': drawCenterBars(ctx, displayWidth, displayHeight); drawCenterBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'radial': drawRadialBars(ctx, displayWidth, displayHeight); drawRadialBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'logarithmic': drawLogarithmicBars(ctx, displayWidth, displayHeight); drawLogarithmicBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'spiral': drawSpiralBars(ctx, displayWidth, displayHeight); drawSpiralBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'gradient': drawGradientBars(ctx, displayWidth, displayHeight); drawGradientBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'discrete': drawDiscreteBars(ctx, displayWidth, displayHeight); drawDiscreteBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'waveform': drawWaveformBars(ctx, displayWidth, displayHeight); drawWaveformBars(offScreenCtx, recordingWidth, recordingHeight); break;
-            case 'branching': drawBranchingBars(ctx, displayWidth, displayHeight); drawBranchingBars(offScreenCtx, recordingWidth, recordingHeight); break;
-        }
-
+        // Draw particles optimized for 60 FPS
         if (enableParticles) {
-            drawParticles(ctx, displayWidth, displayHeight);
-            drawParticles(offScreenCtx, recordingWidth, recordingHeight);
+            drawParticles(ctx, displayWidth, displayHeight, dataArray, bassLevel);
+            drawParticles(offScreenCtx, recordingWidth, recordingHeight, dataArray, bassLevel);
         }
+
+        ctx.restore();
+        offScreenCtx.restore();
+
+        // Draw vignette after shake
+        drawVignette(ctx, displayWidth, displayHeight, vignetteIntensity);
+        drawVignette(offScreenCtx, recordingWidth, recordingHeight, vignetteIntensity);
+
+        // Draw static elements without shake
         drawWatermark(ctx, displayWidth, displayHeight);
         drawWatermark(offScreenCtx, recordingWidth, recordingHeight);
         drawCustomTextAndLogo(ctx, displayWidth, displayHeight);
         drawCustomTextAndLogo(offScreenCtx, recordingWidth, recordingHeight);
+
+        requestAnimationFrame(drawVisualizer);
     }
 
-    // Existing draw functions
+    // Simplified draw functions (no offset parameters since shake is handled in drawVisualizer)
     function drawLinearBars(context, width, height) {
         const barWidth = (width / dataArray.length) * 2.5;
-        let barHeight, x = 0;
+        let x = 0;
         for (let i = 0; i < dataArray.length; i++) {
-            barHeight = dataArray[i];
+            const barHeight = dataArray[i] / 2;
             context.fillStyle = barColor;
-            context.fillRect(x, height - barHeight / 2, barWidth, barHeight / 2);
+            context.fillRect(x, height - barHeight, barWidth, barHeight);
             x += barWidth + 1;
         }
     }
+
     function drawVerticalBars(context, width, height) {
         const barHeight = (height / dataArray.length) * 2.5;
-        let barWidth, y = 0;
+        let y = 0;
         for (let i = 0; i < dataArray.length; i++) {
-            barWidth = dataArray[i];
+            const barWidth = dataArray[i] / 2;
             context.fillStyle = barColor;
-            context.fillRect(width - barWidth / 2, y, barWidth / 2, barHeight);
+            context.fillRect(width - barWidth, y, barWidth, barHeight);
             y += barHeight + 1;
         }
     }
+
     function drawCircularBars(context, width, height) {
         const centerX = width / 2;
         const centerY = height / 2;
@@ -478,20 +522,20 @@
             context.stroke();
         }
     }
+
     function drawCenterBars(context, width, height) {
         const centerX = width / 2;
         const centerY = height / 2;
         const barWidth = (width / dataArray.length) * 2.5;
-        let barHeight, x = centerX - (dataArray.length * barWidth) / 2;
+        let x = centerX - (dataArray.length * barWidth) / 2;
         for (let i = 0; i < dataArray.length; i++) {
-            barHeight = dataArray[i];
+            const barHeight = dataArray[i];
             context.fillStyle = barColor;
             context.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
             x += barWidth + 1;
         }
     }
 
-    // New draw functions for additional bar layouts
     function drawRadialBars(context, width, height) {
         const centerX = width / 2;
         const centerY = height / 2;
@@ -516,7 +560,7 @@
         const barWidth = width / dataArray.length;
         let x = 0;
         for (let i = 0; i < dataArray.length; i++) {
-            const value = Math.log1p(dataArray[i]) * 50; // Logarithmic scaling
+            const value = Math.log1p(dataArray[i]) * 50;
             context.fillStyle = barColor;
             context.fillRect(x, height - value, barWidth, value);
             x += barWidth + 1;
@@ -560,7 +604,7 @@
         const barWidth = width / dataArray.length;
         let x = 0;
         for (let i = 0; i < dataArray.length; i++) {
-            const value = Math.floor(dataArray[i] / 51) * 51; // Discrete steps (0, 51, 102, 153, 204, 255)
+            const value = Math.floor(dataArray[i] / 51) * 51;
             context.fillStyle = barColor;
             context.fillRect(x, height - value, barWidth, value);
             x += barWidth + 1;
@@ -573,7 +617,7 @@
         let x = 0;
         context.moveTo(0, height / 2);
         for (let i = 0; i < dataArray.length; i++) {
-            const value = (dataArray[i] - 128) / 128 * (height / 4); // Center around midpoint
+            const value = (dataArray[i] - 128) / 128 * (height / 4);
             context.lineTo(x, height / 2 + value);
             x += barWidth;
         }
@@ -600,16 +644,35 @@
         }
     }
 
-    // Particle drawing
-    function drawParticles(context, width, height) {
-        for (let i = 0; i < dataArray.length; i++) {
-            if (dataArray[i] > 150) {
-                particles.push(new Particle(Math.random() * width, Math.random() * height, Math.random() * 3, particleColor, { x: (Math.random() - 0.5) * 2, y: -Math.random() * 2 }));
+    // Optimized particle system for 60 FPS
+    function drawParticles(context, width, height, frequencyData, bassLevel) {
+        const particleCount = Math.min(Math.floor(bassLevel * 10) + Math.floor(frequencyData.reduce((a, b) => a + b, 0) / frequencyData.length / 100), 20); // Cap at 20 particles per frame
+        for (let i = 0; i < particleCount; i++) {
+            const freqIndex = Math.floor(Math.random() * frequencyData.length);
+            const intensity = frequencyData[freqIndex] / 255;
+            if (intensity > 0.4) { // Higher threshold for performance
+                const x = (freqIndex / frequencyData.length) * width;
+                const y = height * (1 - intensity);
+                particles.push(new Particle(
+                    x,
+                    y,
+                    Math.random() * 2 + 1,
+                    particleColor,
+                    { x: (Math.random() - 0.5) * 1.5, y: -intensity * 1.5 }
+                ));
             }
         }
-        particles.forEach((particle, index) => {
-            if (particle.alpha <= 0) { particles.splice(index, 1); } else { particle.update(context); }
-        });
+        particles = particles.filter(p => p.alpha > 0).slice(-50); // Limit total particles to 50
+        particles.forEach(p => p.update(context));
+    }
+
+    // Vignette effect optimized for 60 FPS
+    function drawVignette(context, width, height, intensity) {
+        const gradient = context.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height) / 2);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        gradient.addColorStop(1, `rgba(0, 0, 0, ${intensity})`);
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, width, height);
     }
 
     function drawWatermark(context, width, height) {
@@ -669,7 +732,7 @@
             this.draw(context);
             this.x += this.velocity.x;
             this.y += this.velocity.y;
-            this.alpha -= 0.01;
+            this.alpha -= 0.02; // Faster fade for 60 FPS
         }
     }
 
@@ -685,8 +748,14 @@
         const { width, height } = resolutionMap[quality] || resolutionMap['720'];
         offScreenCanvas.width = width;
         offScreenCanvas.height = height;
+        offScreenBackgroundCanvas.width = width;
+        offScreenBackgroundCanvas.height = height;
         recordingWidth = width;
         recordingHeight = height;
+        if (backgroundImage) {
+            offScreenBackgroundCtx.clearRect(0, 0, recordingWidth, recordingHeight);
+            offScreenBackgroundCtx.drawImage(backgroundImage, 0, 0, recordingWidth, recordingHeight);
+        }
     }
 
     // Show quality selection popup before recording
@@ -723,7 +792,7 @@
         });
     }
 
-    // Handle recording with off-screen canvas
+    // Handle recording with 60 FPS settings
     startBtn.addEventListener('click', function () {
         if (!audioElement) {
             alert("Please upload an audio file first.");
@@ -731,10 +800,13 @@
         }
         showQualityPopupBeforeRecording(() => {
             chunks = [];
-            const stream = offScreenCanvas.captureStream(30);
+            const stream = offScreenCanvas.captureStream(targetFPS); // 60 FPS
             const audioStream = audioElement.captureStream();
-            const combinedStream = new MediaStream([...stream.getTracks(), ...audioStream.getTracks()]);
-            recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
+            const combinedStream = new MediaStream([...stream.getVideoTracks(), ...audioStream.getAudioTracks()]);
+            recorder = new MediaRecorder(combinedStream, {
+                mimeType: 'video/webm;codecs=vp9',
+                videoBitsPerSecond: 4000000 // Increased bitrate for 60 FPS quality
+            });
 
             recorder.ondataavailable = (e) => {
                 if (e.data.size > 0) {
@@ -746,11 +818,14 @@
                 const blob = new Blob(chunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 downloadLink.href = url;
-                downloadLink.download = `audio_visualization_${selectedQuality}p.webm`;
+                downloadLink.download = `audio_visualization_${selectedQuality}p_60fps.webm`;
                 downloadLink.style.display = 'block';
+                chunks = []; // Clear chunks to free memory
             };
 
-            recorder.start(100);
+            audioElement.currentTime = 0; // Restart audio for recording
+            audioElement.play();
+            recorder.start(50); // Reduced timeslice to 50ms for smoother 60 FPS chunks
             startBtn.disabled = true;
             stopBtn.disabled = false;
         });
@@ -759,6 +834,7 @@
     stopBtn.addEventListener('click', function () {
         if (recorder && recorder.state === 'recording') {
             recorder.stop();
+            audioElement.pause();
             startBtn.disabled = false;
             stopBtn.disabled = true;
         }
