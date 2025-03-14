@@ -176,6 +176,17 @@
         <label for="barColor">Bar Color</label>
         <input type="color" id="barColor" value="#6e44ff">
 
+        <!-- Particle Position -->
+<label for="particlePosition">Particle Position</label>
+<select id="particlePosition">
+    <option value="rightToLeft">Right to Left</option>
+    <option value="leftToRight">Left to Right</option>
+    <option value="upToDown">Up to Down</option>
+    <option value="downToUp">Down to Up</option>
+    <option value="center">Center Outward</option>
+    <option value="full">Full Screen</option>
+</select>
+
         <!-- Particle Color -->
         <label for="particleColor">Particle Color</label>
         <input type="color" id="particleColor" value="#ffffff">
@@ -262,6 +273,7 @@
         const barColorInput = document.getElementById('barColor');
         const particleColorInput = document.getElementById('particleColor');
         const particleToggleSelect = document.getElementById('particleToggle');
+        const particlePositionSelect = document.getElementById('particlePosition');
         const resetSettingsBtn = document.getElementById('resetSettings');
         const textInput = document.getElementById('textInput');
         const fontSelect = document.getElementById('fontSelect');
@@ -269,7 +281,7 @@
         const logoUpload = document.getElementById('logoUpload');
         const watermarkPositionSelect = document.getElementById('watermarkPosition');
     
-        // Visible canvas size (fixed for display)
+        // Canvas setup
         const displayWidth = 800;
         const displayHeight = 400;
         canvas.width = displayWidth;
@@ -278,12 +290,13 @@
         // Off-screen canvas for recording
         const offScreenCanvas = document.createElement('canvas');
         const offScreenCtx = offScreenCanvas.getContext('2d');
-        let selectedQuality = '720'; // Default quality
-        let recordingWidth = 1280; // Default to 720p
+        let selectedQuality = '720';
+        let recordingWidth = 1280;
         let recordingHeight = 720;
         offScreenCanvas.width = recordingWidth;
         offScreenCanvas.height = recordingHeight;
     
+        // Audio and visualization variables
         let audioContext, analyser, source, dataArray, recorder, chunks = [];
         let backgroundImage = null;
         let particles = [];
@@ -291,6 +304,7 @@
         let barColor = '#6e44ff';
         let particleColor = '#ffffff';
         let enableParticles = true;
+        let particlePosition = 'rightToLeft';
         let customText = '';
         let customFont = 'Calibri, sans-serif';
         let customTextColor = '#ffffff';
@@ -299,14 +313,21 @@
         let audioBlob = null;
         let audioElement = null;
         let lastFrameTime = 0;
-        const targetFPS = 60; // Target 60 FPS
-        const frameInterval = 1000 / targetFPS; // ~16.67ms per frame
+        const targetFPS = 60;
+        const frameInterval = 1000 / targetFPS;
+        const MAX_PARTICLES = 50;
     
-        // Watermark animation variables
-        const watermarkCycleDuration = 10 * 1000; // 10 seconds in milliseconds
+        // Watermark animation
+        const watermarkCycleDuration = 10 * 1000;
         let watermarkStartTime = null;
     
-        // Cached background canvas for performance
+        // Shake variables with smoothing
+        let shakeX = 0;
+        let shakeY = 0;
+        let lastShakeIntensity = 0;
+        const SHAKE_SMOOTHING_FACTOR = 0.3; // Controls how quickly shake adapts
+    
+        // Cached background canvases
         const backgroundCanvas = document.createElement('canvas');
         backgroundCanvas.width = displayWidth;
         backgroundCanvas.height = displayHeight;
@@ -321,27 +342,31 @@
         barColorInput.addEventListener('input', (e) => { barColor = e.target.value; });
         particleColorInput.addEventListener('input', (e) => { particleColor = e.target.value; });
         particleToggleSelect.addEventListener('change', (e) => { enableParticles = e.target.value === 'true'; });
+        particlePositionSelect.addEventListener('change', (e) => { particlePosition = e.target.value; });
         textInput.addEventListener('input', (e) => { customText = e.target.value; });
         fontSelect.addEventListener('change', (e) => { customFont = e.target.value; });
         textColorInput.addEventListener('input', (e) => { customTextColor = e.target.value; });
-        logoUpload.addEventListener('change', function(event) {
-            const file = event.target.files[0];
+        logoUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = (e) => {
                     const img = new Image();
                     img.src = e.target.result;
-                    img.onload = function() { logoImage = img; };
+                    img.onload = () => { logoImage = img; };
                 };
                 reader.readAsDataURL(file);
             }
         });
         watermarkPositionSelect.addEventListener('change', (e) => { watermarkPosition = e.target.value; });
-        resetSettingsBtn.addEventListener('click', () => {
+        resetSettingsBtn.addEventListener('click', resetSettings);
+    
+        function resetSettings() {
             barLayoutSelect.value = 'linear';
             barColorInput.value = '#6e44ff';
             particleColorInput.value = '#ffffff';
             particleToggleSelect.value = 'true';
+            particlePositionSelect.value = 'rightToLeft';
             textInput.value = '';
             fontSelect.value = 'Calibri, sans-serif';
             textColorInput.value = '#ffffff';
@@ -351,51 +376,34 @@
             barColor = '#6e44ff';
             particleColor = '#ffffff';
             enableParticles = true;
+            particlePosition = 'rightToLeft';
             customText = '';
             customFont = 'Calibri, sans-serif';
             customTextColor = '#ffffff';
             logoImage = null;
             watermarkPosition = 'upperleft';
-        });
+        }
     
-        // Handle background image upload with caching
-        backgroundImageInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
+        // Background Image Upload
+        backgroundImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = (e) => {
                     const img = new Image();
                     img.src = e.target.result;
-                    img.onload = function() {
+                    img.onload = () => {
                         backgroundImage = img;
-                        backgroundCtx.clearRect(0, 0, displayWidth, displayHeight);
                         backgroundCtx.drawImage(img, 0, 0, displayWidth, displayHeight);
-                        offScreenBackgroundCtx.clearRect(0, 0, recordingWidth, recordingHeight);
                         offScreenBackgroundCtx.drawImage(img, 0, 0, recordingWidth, recordingHeight);
+                        updateVignette(backgroundCtx, displayWidth, displayHeight, 0.2);
+                        updateVignette(offScreenBackgroundCtx, recordingWidth, recordingHeight, 0.2);
                     };
                 };
                 reader.readAsDataURL(file);
             }
         });
     
-        // Handle audio file upload with error handling
-        audioFileInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file && file.type.startsWith('audio/')) {
-                audioElement = new Audio();
-                audioElement.src = URL.createObjectURL(file);
-                audioElement.controls = true;
-                document.body.appendChild(audioElement);
-                audioElement.play();
-                setupAudioContext(audioElement);
-                audioBlob = file;
-                prepareAudioDownloadLink(file);
-            } else {
-                alert("Please upload a valid audio file.");
-            }
-        });
-    
-        // Prepare the audio download link
         function prepareAudioDownloadLink(file) {
             const audioURL = URL.createObjectURL(file);
             downloadAudioLink.href = audioURL;
@@ -403,57 +411,106 @@
             downloadAudioLink.style.display = 'block';
         }
     
-        // Set up audio context and analyzer
         function setupAudioContext(audio) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256; // Increased for more bars (better detail)
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.8;
             dataArray = new Uint8Array(analyser.frequencyBinCount);
             source = audioContext.createMediaElementSource(audio);
             source.connect(analyser);
-            source.connect(audioContext.destination);
-            watermarkStartTime = performance.now(); // Initialize watermark animation start
+            analyser.connect(audioContext.destination);
+            watermarkStartTime = performance.now();
             drawVisualizer();
         }
     
-        // Optimized drawVisualizer for 60 FPS
+        // Realistic Vignette with Dynamic Intensity and Blur
+        function updateVignette(context, width, height, baseIntensity) {
+            let freqSum = 0;
+            for (let i = 0; i < dataArray.length; i += 10) {
+                freqSum += dataArray[i];
+            }
+            const audioIntensity = Math.min(0.8, (freqSum / (dataArray.length / 10 * 255)) * 2);
+            const dynamicIntensity = baseIntensity + (audioIntensity * 0.6);
+    
+            const gradient = context.createRadialGradient(
+                width / 2, height / 2, 0,
+                width / 2, height / 2, Math.max(width, height) / 1.5
+            );
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(0.7, 'rgba(30, 30, 30, 0.2)');
+            gradient.addColorStop(1, `rgba(0, 0, 0, ${dynamicIntensity})`);
+    
+            context.save();
+            context.filter = 'blur(10px)';
+            context.globalCompositeOperation = 'multiply';
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, width, height);
+            context.restore();
+            context.filter = 'none';
+        }
+    
+        // Main Visualization Loop with Music-Driven Shake
         function drawVisualizer(timestamp) {
             if (!timestamp) timestamp = performance.now();
             if (timestamp - lastFrameTime < frameInterval) {
                 requestAnimationFrame(drawVisualizer);
-                return; // Skip frame if too soon
+                return;
             }
             lastFrameTime = timestamp;
     
-            if (!watermarkStartTime) watermarkStartTime = timestamp; // Ensure start time is set
-    
             analyser.getByteFrequencyData(dataArray);
     
-            // Clear canvases
+            // Calculate bass intensity (lower frequencies for shake)
+            const bassEnd = Math.floor(dataArray.length * 0.25);
+            let bassSum = 0;
+            for (let i = 0; i < bassEnd; i++) {
+                bassSum += dataArray[i];
+            }
+            const rawBassIntensity = bassSum / (bassEnd * 255);
+    
+            // Calculate mid-range intensity for direction variation
+            const midStart = Math.floor(dataArray.length * 0.25);
+            const midEnd = Math.floor(dataArray.length * 0.75);
+            let midSum = 0;
+            for (let i = midStart; i < midEnd; i++) {
+                midSum += dataArray[i];
+            }
+            const midIntensity = midSum / ((midEnd - midStart) * 255);
+    
+            // Smooth shake intensity with exponential moving average
+            const currentShakeIntensity = Math.min(10, rawBassIntensity * 20); // Amplify for visibility
+            lastShakeIntensity = (lastShakeIntensity * (1 - SHAKE_SMOOTHING_FACTOR)) + (currentShakeIntensity * SHAKE_SMOOTHING_FACTOR);
+    
+            // Dynamic shake direction based on mid-range frequencies
+            const angleOffset = (midIntensity * 2 - 1) * Math.PI / 4; // Range: -45° to +45°
+            const shakeMagnitude = lastShakeIntensity;
+            shakeX = Math.cos(angleOffset) * shakeMagnitude * (Math.random() * 0.5 + 0.5);
+            shakeY = Math.sin(angleOffset) * shakeMagnitude * (Math.random() * 0.5 + 0.5);
+    
             ctx.clearRect(0, 0, displayWidth, displayHeight);
             offScreenCtx.clearRect(0, 0, recordingWidth, recordingHeight);
     
-            // Draw cached background
+            // Apply shake transformation
+            ctx.save();
+            offScreenCtx.save();
+            ctx.translate(shakeX, shakeY);
+            offScreenCtx.translate(shakeX * (recordingWidth / displayWidth), 
+                                 shakeY * (recordingHeight / displayHeight));
+    
             if (backgroundImage) {
                 ctx.drawImage(backgroundCanvas, 0, 0);
                 offScreenCtx.drawImage(offScreenBackgroundCanvas, 0, 0);
+            } else {
+                ctx.fillStyle = '#222831';
+                ctx.fillRect(0, 0, displayWidth, displayHeight);
+                offScreenCtx.fillStyle = '#222831';
+                offScreenCtx.fillRect(0, 0, recordingWidth, recordingHeight);
             }
     
-            // Calculate bass intensity
-            const bassRange = Math.floor(dataArray.length / 3);
-            const bassLevel = dataArray.slice(0, bassRange).reduce((a, b) => a + b, 0) / bassRange / 255;
-            const shakeIntensity = Math.min(bassLevel * 10, 8);
-            const vignetteIntensity = Math.min(bassLevel * 0.5, 0.4);
-            const offsetX = (Math.random() - 0.5) * shakeIntensity;
-            const offsetY = (Math.random() - 0.5) * shakeIntensity;
+            ctx.imageSmoothingEnabled = true;
+            offScreenCtx.imageSmoothingEnabled = true;
     
-            // Apply shake to dynamic elements
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            offScreenCtx.save();
-            offScreenCtx.translate(offsetX * (recordingWidth / displayWidth), offsetY * (recordingHeight / displayHeight));
-    
-            // Draw visual elements based on selected layout
             const drawFunc = {
                 'linear': drawLinearBars,
                 'vertical': drawVerticalBars,
@@ -470,56 +527,46 @@
             drawFunc(ctx, displayWidth, displayHeight);
             drawFunc(offScreenCtx, recordingWidth, recordingHeight);
     
-            // Draw particles
             if (enableParticles) {
-                drawParticles(ctx, displayWidth, displayHeight, dataArray, bassLevel);
-                drawParticles(offScreenCtx, recordingWidth, recordingHeight, dataArray, bassLevel);
+                drawParticles(ctx, displayWidth, displayHeight);
+                drawParticles(offScreenCtx, recordingWidth, recordingHeight);
             }
+    
+            drawCustomTextAndLogo(ctx, displayWidth, displayHeight);
+            drawCustomTextAndLogo(offScreenCtx, recordingWidth, recordingHeight);
+    
+            drawWatermark(ctx, displayWidth, displayHeight, timestamp);
+            drawWatermark(offScreenCtx, recordingWidth, recordingHeight, timestamp);
+    
+            updateVignette(ctx, displayWidth, displayHeight, 0.2);
+            updateVignette(offScreenCtx, recordingWidth, recordingHeight, 0.2);
     
             ctx.restore();
             offScreenCtx.restore();
     
-            // Draw vignette after shake
-            drawVignette(ctx, displayWidth, displayHeight, vignetteIntensity);
-            drawVignette(offScreenCtx, recordingWidth, recordingHeight, vignetteIntensity);
-    
-            // Draw custom text and logo
-            drawCustomTextAndLogo(ctx, displayWidth, displayHeight);
-            drawCustomTextAndLogo(offScreenCtx, recordingWidth, recordingHeight);
-    
-            // Draw watermark last to overlay everything
-            drawWatermark(ctx, displayWidth, displayHeight, timestamp);
-            drawWatermark(offScreenCtx, recordingWidth, recordingHeight, timestamp);
-    
             requestAnimationFrame(drawVisualizer);
         }
     
-        // Draw functions with gradients for realism
+        // Simplified Spectrum Visualizations
         function drawLinearBars(context, width, height) {
-            const barWidth = (width / dataArray.length) * 2.5;
+            const barWidth = width / dataArray.length * 2;
             let x = 0;
-            const gradient = context.createLinearGradient(0, height, 0, 0); // Vertical gradient
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff'); // Fade to white at the top
             for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = dataArray[i] / 2;
-                context.fillStyle = gradient;
-                context.fillRect(x, height - barHeight, barWidth, barHeight);
-                x += barWidth + 1;
+                const barHeight = (dataArray[i] / 255) * height * 0.9;
+                context.fillStyle = barColor;
+                context.fillRect(x, height - barHeight, barWidth - 2, barHeight);
+                x += barWidth;
             }
         }
     
         function drawVerticalBars(context, width, height) {
-            const barHeight = (height / dataArray.length) * 2.5;
+            const barHeight = height / dataArray.length * 2;
             let y = 0;
-            const gradient = context.createLinearGradient(width, 0, width - 100, 0); // Horizontal gradient
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
-                const barWidth = dataArray[i] / 2;
-                context.fillStyle = gradient;
-                context.fillRect(width - barWidth, y, barWidth, barHeight);
-                y += barHeight + 1;
+                const barWidth = (dataArray[i] / 255) * width * 0.5;
+                context.fillStyle = barColor;
+                context.fillRect(width - barWidth, y, barWidth, barHeight - 2);
+                y += barHeight;
             }
         }
     
@@ -528,21 +575,18 @@
             const centerY = height / 2;
             const radius = Math.min(width, height) / 3;
             const angleStep = (Math.PI * 2) / dataArray.length;
-            const gradient = context.createRadialGradient(centerX, centerY, radius, centerX, centerY, radius + 50);
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = dataArray[i] / 2;
+                const barHeight = (dataArray[i] / 255) * 80;
                 const angle = i * angleStep;
                 const x1 = centerX + Math.cos(angle) * radius;
                 const y1 = centerY + Math.sin(angle) * radius;
                 const x2 = centerX + Math.cos(angle) * (radius + barHeight);
                 const y2 = centerY + Math.sin(angle) * (radius + barHeight);
-                context.strokeStyle = gradient;
-                context.lineWidth = 2;
                 context.beginPath();
                 context.moveTo(x1, y1);
                 context.lineTo(x2, y2);
+                context.strokeStyle = barColor;
+                context.lineWidth = 2;
                 context.stroke();
             }
         }
@@ -550,16 +594,13 @@
         function drawCenterBars(context, width, height) {
             const centerX = width / 2;
             const centerY = height / 2;
-            const barWidth = (width / dataArray.length) * 2.5;
+            const barWidth = width / dataArray.length * 2;
             let x = centerX - (dataArray.length * barWidth) / 2;
-            const gradient = context.createLinearGradient(0, centerY - 50, 0, centerY + 50);
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = dataArray[i];
-                context.fillStyle = gradient;
-                context.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
-                x += barWidth + 1;
+                const barHeight = (dataArray[i] / 255) * height * 0.7;
+                context.fillStyle = barColor;
+                context.fillRect(x, centerY - barHeight / 2, barWidth - 2, barHeight);
+                x += barWidth;
             }
         }
     
@@ -568,63 +609,50 @@
             const centerY = height / 2;
             const maxRadius = Math.min(width, height) / 2;
             const angleStep = (Math.PI * 2) / dataArray.length;
-            const gradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
-                const value = dataArray[i] / 255;
-                const radius = maxRadius * value;
+                const radius = (dataArray[i] / 255) * maxRadius;
                 const angle = i * angleStep;
                 const x = centerX + Math.cos(angle) * radius;
                 const y = centerY + Math.sin(angle) * radius;
                 context.beginPath();
                 context.moveTo(centerX, centerY);
                 context.lineTo(x, y);
-                context.strokeStyle = gradient;
+                context.strokeStyle = barColor;
                 context.lineWidth = 2;
                 context.stroke();
             }
         }
     
         function drawLogarithmicBars(context, width, height) {
-            const barWidth = width / dataArray.length;
+            const barWidth = width / dataArray.length * 2;
             let x = 0;
-            const gradient = context.createLinearGradient(0, height, 0, 0);
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
-                const value = Math.log1p(dataArray[i]) * 50;
-                context.fillStyle = gradient;
-                context.fillRect(x, height - value, barWidth, value);
-                x += barWidth + 1;
+                const barHeight = Math.log1p(dataArray[i]) * 50;
+                context.fillStyle = barColor;
+                context.fillRect(x, height - barHeight, barWidth - 2, barHeight);
+                x += barWidth;
             }
         }
     
         function drawGradientBars(context, width, height) {
-            const barWidth = width / dataArray.length;
+            const barWidth = width / dataArray.length * 2;
             let x = 0;
-            const gradient = context.createLinearGradient(0, height, 0, 0);
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = dataArray[i];
-                context.fillStyle = gradient;
-                context.fillRect(x, height - barHeight, barWidth, barHeight);
-                x += barWidth + 1;
+                const barHeight = (dataArray[i] / 255) * height * 0.9;
+                context.fillStyle = barColor;
+                context.fillRect(x, height - barHeight, barWidth - 2, barHeight);
+                x += barWidth;
             }
         }
     
         function drawDiscreteBars(context, width, height) {
-            const barWidth = width / dataArray.length;
+            const barWidth = width / dataArray.length * 2;
             let x = 0;
-            const gradient = context.createLinearGradient(0, height, 0, 0);
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
-                const value = Math.floor(dataArray[i] / 51) * 51;
-                context.fillStyle = gradient;
-                context.fillRect(x, height - value, barWidth, value);
-                x += barWidth + 1;
+                const barHeight = Math.floor(dataArray[i] / 51) * 51;
+                context.fillStyle = barColor;
+                context.fillRect(x, height - barHeight, barWidth - 2, barHeight);
+                x += barWidth;
             }
         }
     
@@ -638,10 +666,7 @@
                 context.lineTo(x, height / 2 + value);
                 x += barWidth;
             }
-            const gradient = context.createLinearGradient(0, height / 2 - 50, 0, height / 2 + 50);
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff');
-            context.strokeStyle = gradient;
+            context.strokeStyle = barColor;
             context.lineWidth = 2;
             context.stroke();
         }
@@ -650,18 +675,15 @@
             const centerX = width / 2;
             const centerY = height;
             const angleStep = Math.PI / (dataArray.length - 1);
-            const gradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(width, height) / 2);
-            gradient.addColorStop(0, barColor);
-            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
-                const value = dataArray[i] / 255 * height / 2;
+                const value = (dataArray[i] / 255) * height / 2;
                 const angle = -Math.PI / 2 + i * angleStep;
                 const x = centerX + Math.cos(angle) * value;
                 const y = centerY + Math.sin(angle) * value;
                 context.beginPath();
                 context.moveTo(centerX, centerY);
                 context.lineTo(x, y);
-                context.strokeStyle = gradient;
+                context.strokeStyle = barColor;
                 context.lineWidth = 2;
                 context.stroke();
             }
@@ -670,111 +692,120 @@
         function drawCircularGradientOutward(context, width, height) {
             const centerX = width / 2;
             const centerY = height / 2;
-            const radius = Math.min(width, height) / 3; // Base radius of the circle
-            const angleStep = (Math.PI * 2) / dataArray.length; // Angle between each bar
-    
-            // Create a gradient for the bars (cyan to pink)
-            const gradient = context.createLinearGradient(centerX - radius, centerY, centerX + radius, centerY);
-            gradient.addColorStop(0, '#00FFFF'); // Cyan
-            gradient.addColorStop(1, '#FF00FF'); // Pink
-    
-            // Enable glow effect
-            context.shadowBlur = 15; // Increased glow for visibility
-            context.shadowColor = 'rgba(255, 255, 255, 0.7)';
+            const baseRadius = Math.min(width, height) / 4;
+            const angleStep = (Math.PI * 2) / dataArray.length;
+            
+            context.save();
+            context.translate(centerX, centerY);
     
             for (let i = 0; i < dataArray.length; i++) {
-                const barHeight = (dataArray[i] / 255) * 100; // Scale bar height to be more visible (0-100px)
+                const barHeight = (dataArray[i] / 255) * 100;
                 const angle = i * angleStep;
                 
-                // Calculate the inner and outer points of the bar
-                const x1 = centerX + Math.cos(angle) * radius;
-                const y1 = centerY + Math.sin(angle) * radius;
-                const x2 = centerX + Math.cos(angle) * (radius + barHeight); // Extend outward
-                const y2 = centerY + Math.sin(angle) * (radius + barHeight);
-    
-                // Draw the bar
-                context.strokeStyle = gradient;
-                context.lineWidth = 4; // Increased line width for better visibility
+                const innerRadius = baseRadius;
+                const outerRadius = baseRadius + barHeight;
+                
                 context.beginPath();
-                context.moveTo(x1, y1);
-                context.lineTo(x2, y2);
+                context.moveTo(Math.cos(angle) * innerRadius, Math.sin(angle) * innerRadius);
+                context.lineTo(Math.cos(angle) * outerRadius, Math.sin(angle) * outerRadius);
+                context.strokeStyle = barColor;
+                context.lineWidth = 2;
                 context.stroke();
             }
     
-            // Reset shadow to avoid affecting other elements
-            context.shadowBlur = 0;
+            context.restore();
         }
     
-        // Updated particle system with dynamic movement
-        function drawParticles(context, width, height, frequencyData, bassLevel) {
-            const highFreqStart = Math.floor(frequencyData.length * 0.5); // Start from the higher half (treble)
-            const highFreqData = frequencyData.slice(highFreqStart); // Only consider high frequencies
-            const totalIntensity = highFreqData.reduce((a, b) => a + b, 0) / highFreqData.length / 255; // Overall intensity of high frequencies
-            const particleCount = Math.min(Math.floor(totalIntensity * 50), 50); // Increase max particles to 50, scale with intensity
-    
+        // Lightweight Particle System
+        function drawParticles(context, width, height) {
+            const particleCount = Math.min(5, Math.floor(dataArray.length / 50));
             for (let i = 0; i < particleCount; i++) {
-                const freqIndex = highFreqStart + Math.floor(Math.random() * highFreqData.length);
-                const intensity = frequencyData[freqIndex] / 255;
-                if (intensity > 0.4) { // Lower threshold to allow more particles
-                    const x = 0; // Start from the left edge
-                    const y = height * (1 - intensity);
-                    const baseSpeed = 1 + (totalIntensity * 2); // Base speed increases with overall intensity
-                    particles.push(new Particle(
-                        x,
-                        y,
-                        Math.random() * 2 + 1,
-                        particleColor,
-                        { x: Math.random() * 2 + 1, y: -intensity * 2 }, // Horizontal movement, vertical drift
-                        baseSpeed
-                    ));
+                const intensity = dataArray[i * 50] / 255 || 0.1;
+                if (intensity > 0.1) {
+                    let x, y, velocity;
+                    const speed = intensity * 3 + 0.5;
+    
+                    switch (particlePosition) {
+                        case 'rightToLeft':
+                            x = width;
+                            y = (i / particleCount) * height;
+                            velocity = { x: -speed, y: 0 };
+                            break;
+                        case 'leftToRight':
+                            x = 0;
+                            y = (i / particleCount) * height;
+                            velocity = { x: speed, y: 0 };
+                            break;
+                        case 'upToDown':
+                            x = (i / particleCount) * width;
+                            y = 0;
+                            velocity = { x: 0, y: speed };
+                            break;
+                        case 'downToUp':
+                            x = (i / particleCount) * width;
+                            y = height;
+                            velocity = { x: 0, y: -speed };
+                            break;
+                        case 'center':
+                            x = width / 2;
+                            y = height / 2;
+                            const angle = Math.random() * Math.PI * 2;
+                            velocity = { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
+                            break;
+                        case 'full':
+                            x = Math.random() * width;
+                            y = Math.random() * height;
+                            velocity = { x: (Math.random() - 0.5) * speed, y: (Math.random() - 0.5) * speed };
+                            break;
+                    }
+    
+                    particles.push(new Particle(x, y, 2, particleColor, velocity, intensity));
                 }
             }
-            particles = particles.filter(p => p.alpha > 0 || p.x < width).slice(-100); // Allow up to 100 particles, remove when off-screen
-            particles.forEach(p => p.update(context, totalIntensity));
+    
+            particles = particles.filter(p => {
+                switch (particlePosition) {
+                    case 'rightToLeft': return p.x > -p.radius;
+                    case 'leftToRight': return p.x < width + p.radius;
+                    case 'upToDown': return p.y < height + p.radius;
+                    case 'downToUp': return p.y > -p.radius;
+                    case 'center': return p.x > -p.radius && p.x < width + p.radius && 
+                                      p.y > -p.radius && p.y < height + p.radius;
+                    case 'full': return p.x > -p.radius && p.x < width + p.radius && 
+                                     p.y > -p.radius && p.y < height + p.radius;
+                }
+            }).slice(0, MAX_PARTICLES);
+    
+            particles.forEach(p => p.update(context));
         }
     
-        // Vignette effect
-        function drawVignette(context, width, height, intensity) {
-            const gradient = context.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height) / 2);
-            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-            gradient.addColorStop(1, `rgba(0, 0, 0, ${intensity})`);
-            context.fillStyle = gradient;
-            context.fillRect(0, 0, width, height);
-        }
-    
-        // Updated watermark function with smooth animation
-        function drawWatermark(context, width, height, timestamp) {
-            // Static watermark at selected position
-            context.font = 'bold 24px "Segoe UI", Arial, sans-serif';
-            const padding = 10;
-            let staticX, staticY;
-            const watermarkText = 'AUTO ED';
-            switch (watermarkPosition) {
-                case 'upperleft': staticX = padding; staticY = padding + 24; break;
-                case 'upperright': staticX = width - context.measureText(watermarkText).width - padding; staticY = padding + 24; break;
-                case 'downleft': staticX = padding; staticY = height - padding; break;
-                case 'downright': staticX = width - context.measureText(watermarkText).width - padding; staticY = height - padding; break;
+        class Particle {
+            constructor(x, y, radius, color, velocity, intensity) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.velocity = velocity;
+                this.alpha = 1;
+                this.intensity = intensity;
             }
-            context.fillStyle = '#ffffff';
-            context.fillText('AUTO', staticX, staticY);
-            const autoWidthStatic = context.measureText('AUTO ').width;
-            context.fillStyle = '#ff0000';
-            context.fillText('ED', staticX + autoWidthStatic, staticY);
     
-            // Dynamic watermark with smooth vertical animation on the right side
-            context.font = 'italic 40px "Segoe UI", Arial, sans-serif';
-            const elapsed = (timestamp - watermarkStartTime) % watermarkCycleDuration;
-            const progress = elapsed / watermarkCycleDuration; // 0 to 1 over 10 seconds
-            const startY = padding; // Top position
-            const endY = height - padding - 40; // Bottom position (adjusted for text height)
-            const dynamicY = startY + (endY - startY) * progress; // Linear interpolation
-            const dynamicX = width - context.measureText('AUTO ED').width - padding; // Fixed right-side position
+            draw(context) {
+                context.save();
+                context.globalAlpha = this.alpha;
+                context.beginPath();
+                context.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                context.fillStyle = this.color;
+                context.fill();
+                context.restore();
+            }
     
-            context.fillStyle = 'rgba(255, 255, 255, 0.3)'; // White, semi-transparent
-            context.fillText('AUTO', dynamicX, dynamicY);
-            const autoWidthDynamic = context.measureText('AUTO ').width;
-            context.fillStyle = 'rgba(255, 0, 0, 0.3)'; // Red, semi-transparent
-            context.fillText('ED', dynamicX + autoWidthDynamic, dynamicY);
+            update(context) {
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.02;
+                if (this.alpha > 0) this.draw(context);
+            }
         }
     
         function drawCustomTextAndLogo(context, width, height) {
@@ -795,35 +826,39 @@
             }
         }
     
-        // Updated Particle class with dynamic movement
-        class Particle {
-            constructor(x, y, radius, color, velocity, baseSpeed = 1) {
-                this.x = x;
-                this.y = y;
-                this.radius = radius;
-                this.color = color;
-                this.velocity = velocity;
-                this.alpha = 1;
-                this.baseSpeed = baseSpeed; // Base speed for movement
+        function drawWatermark(context, width, height, timestamp) {
+            const elapsed = (timestamp - watermarkStartTime) % watermarkCycleDuration;
+            const progress = elapsed / watermarkCycleDuration;
+            context.font = 'bold 24px "Segoe UI", Arial, sans-serif';
+            const padding = 10;
+            const watermarkText = 'AUTO ED';
+            let x, y;
+            switch (watermarkPosition) {
+                case 'upperleft': x = padding; y = padding + 24; break;
+                case 'upperright': x = width - context.measureText(watermarkText).width - padding; y = padding + 24; break;
+                case 'downleft': x = padding; y = height - padding; break;
+                case 'downright': x = width - context.measureText(watermarkText).width - padding; y = height - padding; break;
             }
-            draw(context) {
-                context.save();
-                context.globalAlpha = this.alpha;
-                context.beginPath();
-                context.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-                context.fillStyle = this.color;
-                context.fill();
-                context.restore();
-            }
-            update(context, frequencyIntensity) {
-                const speedMultiplier = 1 + (frequencyIntensity * 5); // Increase speed with frequency intensity
-                this.x += this.velocity.x * this.baseSpeed * speedMultiplier; // Move left to right
-                this.y += this.velocity.y * this.baseSpeed; // Maintain vertical drift
-                this.alpha -= 0.05;
-            }
+            context.fillStyle = '#ffffff';
+            context.fillText('AUTO', x, y);
+            context.fillStyle = '#ff0000';
+            context.fillText('ED', x + context.measureText('AUTO ').width, y);
+    
+            context.font = 'italic 40px "Segoe UI", Arial, sans-serif';
+            const startX = width - context.measureText('AUTO ED').width - padding;
+            const startY = padding + 40;
+            const endX = padding;
+            const endY = height - padding;
+            const dynamicX = startX + (endX - startX) * progress;
+            const dynamicY = startY + (endY - startY) * progress;
+            
+            context.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            context.fillText('AUTO', dynamicX, dynamicY);
+            context.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            context.fillText('ED', dynamicX + context.measureText('AUTO ').width, dynamicY);
         }
     
-        // Set recording resolution based on quality
+        // Recording Resolution
         function setRecordingResolution(quality) {
             const resolutionMap = {
                 '1080': { width: 1920, height: 1080 },
@@ -840,35 +875,24 @@
             recordingWidth = width;
             recordingHeight = height;
             if (backgroundImage) {
-                offScreenBackgroundCtx.clearRect(0, 0, recordingWidth, recordingHeight);
-                offScreenBackgroundCtx.drawImage(backgroundImage, 0, 0, recordingWidth, recordingHeight);
+                offScreenBackgroundCtx.drawImage(backgroundImage, 0, 0, width, height);
+                updateVignette(offScreenBackgroundCtx, recordingWidth, recordingHeight, 0.2);
             }
         }
     
-        // Show quality selection popup before recording
-        function showQualityPopupBeforeRecording(callback) {
+        // Quality Popup
+        function showQualityPopup(callback) {
             const popup = document.createElement('div');
-            popup.style.position = 'fixed';
-            popup.style.top = '50%';
-            popup.style.left = '50%';
-            popup.style.transform = 'translate(-50%, -50%)';
-            popup.style.background = '#fff';
-            popup.style.padding = '20px';
-            popup.style.borderRadius = '10px';
-            popup.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-            popup.style.zIndex = '1000';
-    
+            popup.id = 'qualityPopup';
             popup.innerHTML = `
                 <h3>Select Video Quality</h3>
-                <button data-quality="1080" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">1080HD</button>
-                <button data-quality="720" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">720p</button>
-                <button data-quality="360" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">360p</button>
-                <button data-quality="240" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">240p</button>
-                <button data-quality="140" style="display: block; width: 100%; margin: 5px 0; padding: 10px; background: #0073b1; color: white; border: none; border-radius: 5px; cursor: pointer;">140p</button>
+                <button data-quality="1080">1080HD</button>
+                <button data-quality="720">720p</button>
+                <button data-quality="360">360p</button>
+                <button data-quality="240">240p</button>
+                <button data-quality="140">140p</button>
             `;
-    
             document.body.appendChild(popup);
-    
             popup.querySelectorAll('button').forEach(button => {
                 button.addEventListener('click', () => {
                     selectedQuality = button.getAttribute('data-quality');
@@ -879,52 +903,62 @@
             });
         }
     
-        // Handle recording with optimized 60 FPS
-        startBtn.addEventListener('click', function () {
+        // Recording
+        startBtn.addEventListener('click', () => {
             if (!audioElement) {
                 alert("Please upload an audio file first.");
                 return;
             }
-            showQualityPopupBeforeRecording(() => {
+            showQualityPopup(() => {
                 chunks = [];
-                const stream = offScreenCanvas.captureStream(targetFPS); // Explicitly set to 60 FPS
+                const stream = offScreenCanvas.captureStream(targetFPS);
                 const audioStream = audioElement.captureStream();
                 const combinedStream = new MediaStream([...stream.getVideoTracks(), ...audioStream.getAudioTracks()]);
                 recorder = new MediaRecorder(combinedStream, {
                     mimeType: 'video/webm;codecs=vp9',
-                    videoBitsPerSecond: 6000000, // Increased bitrate for 60 FPS quality
-                    audioBitsPerSecond: 128000 // Ensure audio quality
+                    videoBitsPerSecond: 4000000,
+                    audioBitsPerSecond: 128000
                 });
     
-                recorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) {
-                        chunks.push(e.data);
-                    }
-                };
-    
+                recorder.ondataavailable = (e) => chunks.push(e.data);
                 recorder.onstop = () => {
                     const blob = new Blob(chunks, { type: 'video/webm' });
-                    const url = URL.createObjectURL(blob);
-                    downloadLink.href = url;
-                    downloadLink.download = `audio_visualization_${selectedQuality}p_60fps.webm`;
+                    downloadLink.href = URL.createObjectURL(blob);
+                    downloadLink.download = `audio_visualization_${selectedQuality}p.webm`;
                     downloadLink.style.display = 'block';
-                    chunks = []; // Clear chunks to free memory
+                    chunks = [];
                 };
     
-                audioElement.currentTime = 0; // Restart audio for recording
+                audioElement.currentTime = 0;
                 audioElement.play();
-                recorder.start(16); // Timeslice of ~16ms to match 60 FPS (1000/60 ≈ 16.67ms)
+                recorder.start(16);
                 startBtn.disabled = true;
                 stopBtn.disabled = false;
             });
         });
     
-        stopBtn.addEventListener('click', function () {
+        stopBtn.addEventListener('click', () => {
             if (recorder && recorder.state === 'recording') {
                 recorder.stop();
                 audioElement.pause();
                 startBtn.disabled = false;
                 stopBtn.disabled = true;
+            }
+        });
+    
+        // Audio File Upload
+        audioFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('audio/')) {
+                audioElement = new Audio(URL.createObjectURL(file));
+                audioElement.controls = true;
+                document.body.appendChild(audioElement);
+                audioElement.play();
+                setupAudioContext(audioElement);
+                audioBlob = file;
+                prepareAudioDownloadLink(file);
+            } else {
+                alert("Please upload a valid audio file.");
             }
         });
     </script>
