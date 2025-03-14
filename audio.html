@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&family=Open+Sans&family=Lato&family=Montserrat&family=Poppins&display=swap" rel="stylesheet">
     <title>AUDIO SPRECTRUM Cr.</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <meta property="og:title" content="AUDIO SPECTRUM Cr.">
@@ -161,10 +162,10 @@
     <option value="linear">Linear (Horizontal)</option>
     <option value="vertical">Linear (Vertical)</option>
     <option value="circular">Circular</option>
+    <option value="circularGradientOutward">Circular Gradient Outward</option>
     <option value="center">Center Bars</option>
     <option value="radial">Radial</option>
     <option value="logarithmic">Logarithmic</option>
-    <option value="spiral">Spiral</option>
     <option value="gradient">Gradient</option>
     <option value="discrete">Discrete</option>
     <option value="waveform">Waveform</option>
@@ -211,6 +212,11 @@
             <option value="Arial, sans-serif">Arial</option>
             <option value="Times New Roman, serif">Times New Roman</option>
             <option value="Courier New, monospace">Courier New</option>
+            <option value="Roboto, sans-serif">Roboto</option>
+            <option value="Open Sans, sans-serif">Open Sans</option>
+            <option value="Lato, sans-serif">Lato</option>
+            <option value="Montserrat, sans-serif">Montserrat</option>
+            <option value="Poppins, sans-serif">Poppins</option>
         </select>
 
         <!-- Text Color -->
@@ -401,7 +407,7 @@
         function setupAudioContext(audio) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioContext.createAnalyser();
-            analyser.fftSize = 128; // Optimized for performance at 60 FPS
+            analyser.fftSize = 256; // Increased for more bars (better detail)
             dataArray = new Uint8Array(analyser.frequencyBinCount);
             source = audioContext.createMediaElementSource(audio);
             source.connect(analyser);
@@ -455,11 +461,11 @@
                 'center': drawCenterBars,
                 'radial': drawRadialBars,
                 'logarithmic': drawLogarithmicBars,
-                'spiral': drawSpiralBars,
                 'gradient': drawGradientBars,
                 'discrete': drawDiscreteBars,
                 'waveform': drawWaveformBars,
-                'branching': drawBranchingBars
+                'branching': drawBranchingBars,
+                'circularGradientOutward': drawCircularGradientOutward
             }[barLayout];
             drawFunc(ctx, displayWidth, displayHeight);
             drawFunc(offScreenCtx, recordingWidth, recordingHeight);
@@ -488,13 +494,16 @@
             requestAnimationFrame(drawVisualizer);
         }
     
-        // Draw functions (unchanged)
+        // Draw functions with gradients for realism
         function drawLinearBars(context, width, height) {
             const barWidth = (width / dataArray.length) * 2.5;
             let x = 0;
+            const gradient = context.createLinearGradient(0, height, 0, 0); // Vertical gradient
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, '#ffffff'); // Fade to white at the top
             for (let i = 0; i < dataArray.length; i++) {
                 const barHeight = dataArray[i] / 2;
-                context.fillStyle = barColor;
+                context.fillStyle = gradient;
                 context.fillRect(x, height - barHeight, barWidth, barHeight);
                 x += barWidth + 1;
             }
@@ -503,9 +512,12 @@
         function drawVerticalBars(context, width, height) {
             const barHeight = (height / dataArray.length) * 2.5;
             let y = 0;
+            const gradient = context.createLinearGradient(width, 0, width - 100, 0); // Horizontal gradient
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
                 const barWidth = dataArray[i] / 2;
-                context.fillStyle = barColor;
+                context.fillStyle = gradient;
                 context.fillRect(width - barWidth, y, barWidth, barHeight);
                 y += barHeight + 1;
             }
@@ -516,6 +528,9 @@
             const centerY = height / 2;
             const radius = Math.min(width, height) / 3;
             const angleStep = (Math.PI * 2) / dataArray.length;
+            const gradient = context.createRadialGradient(centerX, centerY, radius, centerX, centerY, radius + 50);
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
                 const barHeight = dataArray[i] / 2;
                 const angle = i * angleStep;
@@ -523,7 +538,7 @@
                 const y1 = centerY + Math.sin(angle) * radius;
                 const x2 = centerX + Math.cos(angle) * (radius + barHeight);
                 const y2 = centerY + Math.sin(angle) * (radius + barHeight);
-                context.strokeStyle = barColor;
+                context.strokeStyle = gradient;
                 context.lineWidth = 2;
                 context.beginPath();
                 context.moveTo(x1, y1);
@@ -537,9 +552,12 @@
             const centerY = height / 2;
             const barWidth = (width / dataArray.length) * 2.5;
             let x = centerX - (dataArray.length * barWidth) / 2;
+            const gradient = context.createLinearGradient(0, centerY - 50, 0, centerY + 50);
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
                 const barHeight = dataArray[i];
-                context.fillStyle = barColor;
+                context.fillStyle = gradient;
                 context.fillRect(x, centerY - barHeight / 2, barWidth, barHeight);
                 x += barWidth + 1;
             }
@@ -550,6 +568,9 @@
             const centerY = height / 2;
             const maxRadius = Math.min(width, height) / 2;
             const angleStep = (Math.PI * 2) / dataArray.length;
+            const gradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
                 const value = dataArray[i] / 255;
                 const radius = maxRadius * value;
@@ -559,7 +580,7 @@
                 context.beginPath();
                 context.moveTo(centerX, centerY);
                 context.lineTo(x, y);
-                context.strokeStyle = barColor;
+                context.strokeStyle = gradient;
                 context.lineWidth = 2;
                 context.stroke();
             }
@@ -568,30 +589,14 @@
         function drawLogarithmicBars(context, width, height) {
             const barWidth = width / dataArray.length;
             let x = 0;
+            const gradient = context.createLinearGradient(0, height, 0, 0);
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
                 const value = Math.log1p(dataArray[i]) * 50;
-                context.fillStyle = barColor;
+                context.fillStyle = gradient;
                 context.fillRect(x, height - value, barWidth, value);
                 x += barWidth + 1;
-            }
-        }
-    
-        function drawSpiralBars(context, width, height) {
-            const centerX = width / 2;
-            const centerY = height / 2;
-            let angle = 0;
-            const spiralStep = 0.1;
-            const maxRadius = Math.min(width, height) / 2;
-            for (let i = 0; i < dataArray.length; i++) {
-                const value = dataArray[i] / 255;
-                const radius = (i / dataArray.length) * maxRadius * value;
-                angle += spiralStep;
-                const x = centerX + Math.cos(angle) * radius;
-                const y = centerY + Math.sin(angle) * radius;
-                context.beginPath();
-                context.arc(x, y, 5, 0, Math.PI * 2);
-                context.fillStyle = barColor;
-                context.fill();
             }
         }
     
@@ -612,9 +617,12 @@
         function drawDiscreteBars(context, width, height) {
             const barWidth = width / dataArray.length;
             let x = 0;
+            const gradient = context.createLinearGradient(0, height, 0, 0);
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
                 const value = Math.floor(dataArray[i] / 51) * 51;
-                context.fillStyle = barColor;
+                context.fillStyle = gradient;
                 context.fillRect(x, height - value, barWidth, value);
                 x += barWidth + 1;
             }
@@ -630,7 +638,10 @@
                 context.lineTo(x, height / 2 + value);
                 x += barWidth;
             }
-            context.strokeStyle = barColor;
+            const gradient = context.createLinearGradient(0, height / 2 - 50, 0, height / 2 + 50);
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, '#ffffff');
+            context.strokeStyle = gradient;
             context.lineWidth = 2;
             context.stroke();
         }
@@ -639,6 +650,9 @@
             const centerX = width / 2;
             const centerY = height;
             const angleStep = Math.PI / (dataArray.length - 1);
+            const gradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(width, height) / 2);
+            gradient.addColorStop(0, barColor);
+            gradient.addColorStop(1, '#ffffff');
             for (let i = 0; i < dataArray.length; i++) {
                 const value = dataArray[i] / 255 * height / 2;
                 const angle = -Math.PI / 2 + i * angleStep;
@@ -647,32 +661,76 @@
                 context.beginPath();
                 context.moveTo(centerX, centerY);
                 context.lineTo(x, y);
-                context.strokeStyle = barColor;
+                context.strokeStyle = gradient;
                 context.lineWidth = 2;
                 context.stroke();
             }
         }
     
-        // Optimized particle system
+        function drawCircularGradientOutward(context, width, height) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) / 3; // Base radius of the circle
+            const angleStep = (Math.PI * 2) / dataArray.length; // Angle between each bar
+    
+            // Create a gradient for the bars (cyan to pink)
+            const gradient = context.createLinearGradient(centerX - radius, centerY, centerX + radius, centerY);
+            gradient.addColorStop(0, '#00FFFF'); // Cyan
+            gradient.addColorStop(1, '#FF00FF'); // Pink
+    
+            // Enable glow effect
+            context.shadowBlur = 15; // Increased glow for visibility
+            context.shadowColor = 'rgba(255, 255, 255, 0.7)';
+    
+            for (let i = 0; i < dataArray.length; i++) {
+                const barHeight = (dataArray[i] / 255) * 100; // Scale bar height to be more visible (0-100px)
+                const angle = i * angleStep;
+                
+                // Calculate the inner and outer points of the bar
+                const x1 = centerX + Math.cos(angle) * radius;
+                const y1 = centerY + Math.sin(angle) * radius;
+                const x2 = centerX + Math.cos(angle) * (radius + barHeight); // Extend outward
+                const y2 = centerY + Math.sin(angle) * (radius + barHeight);
+    
+                // Draw the bar
+                context.strokeStyle = gradient;
+                context.lineWidth = 4; // Increased line width for better visibility
+                context.beginPath();
+                context.moveTo(x1, y1);
+                context.lineTo(x2, y2);
+                context.stroke();
+            }
+    
+            // Reset shadow to avoid affecting other elements
+            context.shadowBlur = 0;
+        }
+    
+        // Updated particle system with dynamic movement
         function drawParticles(context, width, height, frequencyData, bassLevel) {
-            const particleCount = Math.min(Math.floor(bassLevel * 10) + Math.floor(frequencyData.reduce((a, b) => a + b, 0) / frequencyData.length / 100), 20);
+            const highFreqStart = Math.floor(frequencyData.length * 0.5); // Start from the higher half (treble)
+            const highFreqData = frequencyData.slice(highFreqStart); // Only consider high frequencies
+            const totalIntensity = highFreqData.reduce((a, b) => a + b, 0) / highFreqData.length / 255; // Overall intensity of high frequencies
+            const particleCount = Math.min(Math.floor(totalIntensity * 50), 50); // Increase max particles to 50, scale with intensity
+    
             for (let i = 0; i < particleCount; i++) {
-                const freqIndex = Math.floor(Math.random() * frequencyData.length);
+                const freqIndex = highFreqStart + Math.floor(Math.random() * highFreqData.length);
                 const intensity = frequencyData[freqIndex] / 255;
-                if (intensity > 0.4) {
-                    const x = (freqIndex / frequencyData.length) * width;
+                if (intensity > 0.4) { // Lower threshold to allow more particles
+                    const x = 0; // Start from the left edge
                     const y = height * (1 - intensity);
+                    const baseSpeed = 1 + (totalIntensity * 2); // Base speed increases with overall intensity
                     particles.push(new Particle(
                         x,
                         y,
                         Math.random() * 2 + 1,
                         particleColor,
-                        { x: (Math.random() - 0.5) * 1.5, y: -intensity * 1.5 }
+                        { x: Math.random() * 2 + 1, y: -intensity * 2 }, // Horizontal movement, vertical drift
+                        baseSpeed
                     ));
                 }
             }
-            particles = particles.filter(p => p.alpha > 0).slice(-50);
-            particles.forEach(p => p.update(context));
+            particles = particles.filter(p => p.alpha > 0 || p.x < width).slice(-100); // Allow up to 100 particles, remove when off-screen
+            particles.forEach(p => p.update(context, totalIntensity));
         }
     
         // Vignette effect
@@ -737,14 +795,16 @@
             }
         }
     
+        // Updated Particle class with dynamic movement
         class Particle {
-            constructor(x, y, radius, color, velocity) {
+            constructor(x, y, radius, color, velocity, baseSpeed = 1) {
                 this.x = x;
                 this.y = y;
                 this.radius = radius;
                 this.color = color;
                 this.velocity = velocity;
                 this.alpha = 1;
+                this.baseSpeed = baseSpeed; // Base speed for movement
             }
             draw(context) {
                 context.save();
@@ -755,11 +815,11 @@
                 context.fill();
                 context.restore();
             }
-            update(context) {
-                this.draw(context);
-                this.x += this.velocity.x;
-                this.y += this.velocity.y;
-                this.alpha -= 0.02;
+            update(context, frequencyIntensity) {
+                const speedMultiplier = 1 + (frequencyIntensity * 5); // Increase speed with frequency intensity
+                this.x += this.velocity.x * this.baseSpeed * speedMultiplier; // Move left to right
+                this.y += this.velocity.y * this.baseSpeed; // Maintain vertical drift
+                this.alpha -= 0.05;
             }
         }
     
