@@ -1,1 +1,411 @@
-new
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Audio Mixer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f6f5;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #0A66C2;
+      font-size: 1.8em;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: #666;
+      font-size: 0.9em;
+      margin-bottom: 15px;
+    }
+
+    #audioUpload {
+      margin: 10px 0;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100%;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    #status {
+      color: #0A66C2;
+      font-size: 0.9em;
+      margin-top: 10px;
+    }
+
+    #status.error {
+      color: #B24020;
+    }
+
+    #preview {
+      margin: 15px 0;
+    }
+
+    #audioPlayer {
+      width: 100%;
+      border-radius: 4px;
+    }
+
+    #adjustments {
+      padding: 15px;
+      background: #fafafa;
+      border-radius: 4px;
+      border: 1px solid #eee;
+      margin-top: 15px;
+    }
+
+    #adjustments h3 {
+      color: #0A66C2;
+      font-size: 1.2em;
+      margin-bottom: 10px;
+    }
+
+    #adjustments label {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      color: #333;
+      font-size: 0.85em;
+    }
+
+    #adjustments input[type="range"] {
+      width: 100%;
+      max-width: 180px;
+      margin-left: 10px;
+      -webkit-appearance: none;
+      background: #ddd;
+      border-radius: 3px;
+      height: 5px;
+      outline: none;
+    }
+
+    #adjustments input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #0A66C2;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
+    }
+
+    #adjustments input[type="checkbox"] {
+      margin-left: 10px;
+      accent-color: #0A66C2;
+    }
+
+    #downloadLink {
+      display: none;
+      margin-top: 15px;
+      padding: 8px 15px;
+      background: #0A66C2;
+      color: #fff;
+      text-decoration: none;
+      font-size: 0.9em;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+
+    #downloadLink:hover {
+      background: #084a99;
+    }
+
+    #loading {
+      display: none;
+      color: #0A66C2;
+      font-size: 0.9em;
+      margin-top: 10px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.5; }
+      50% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>LinkedIn Audio Mixer</h1>
+    <p>Enhance your audio with real-time effects</p>
+    <input type="file" id="audioUpload" accept=".mp3,.wav">
+    <div id="status"></div>
+    <div id="loading">Processing...</div>
+    
+    <div id="preview">
+      <audio id="audioPlayer" controls style="display:none;"></audio>
+    </div>
+
+    <div id="adjustments">
+      <h3>Audio Controls</h3>
+      <label>Sub-Bass: <input type="range" id="subBass" min="0" max="15" value="5"></label>
+      <label>Bass: <input type="range" id="bass" min="0" max="15" value="5"></label>
+      <label>Mid-Bass: <input type="range" id="midBass" min="-10" max="0" value="0"></label>
+      <label>Highs: <input type="range" id="highs" min="0" max="10" value="3"></label>
+      <label>Brightness: <input type="range" id="brightness" min="0" max="10" value="3"></label>
+      <label>Limiter: <input type="checkbox" id="limiter" checked></label>
+    </div>
+
+    <a id="downloadLink">Download Enhanced Audio</a>
+  </div>
+
+  <script>
+    if (!window.AudioContext) {
+      alert("This browser doesn't support Web Audio.");
+      throw new Error("Unsupported browser");
+    }
+
+    let audioContext, source, filters, compressor;
+    const audioPlayer = document.getElementById('audioPlayer');
+    const status = document.getElementById('status');
+    const loading = document.getElementById('loading');
+    const downloadLink = document.getElementById('downloadLink');
+
+    document.getElementById('audioUpload').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      status.classList.remove('error');
+      downloadLink.style.display = 'none';
+      audioPlayer.style.display = 'none';
+
+      if (!file) {
+        status.textContent = 'Please select an audio file.';
+        status.classList.add('error');
+        return;
+      }
+
+      if (file.size > 50 * 1024 * 1024) { // 50 MB limit
+        status.textContent = 'File too large! Max 50MB.';
+        status.classList.add('error');
+        return;
+      }
+
+      status.textContent = 'Loading audio...';
+      loading.style.display = 'block';
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        if (source) source.disconnect();
+        source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+
+        filters = {
+          subBass: audioContext.createBiquadFilter(),
+          bass: audioContext.createBiquadFilter(),
+          midBass: audioContext.createBiquadFilter(),
+          highs: audioContext.createBiquadFilter(),
+          brightness: audioContext.createBiquadFilter()
+        };
+
+        filters.subBass.type = 'lowshelf';
+        filters.subBass.frequency.value = 45;
+        filters.bass.type = 'lowshelf';
+        filters.bass.frequency.value = 100;
+        filters.midBass.type = 'peaking';
+        filters.midBass.frequency.value = 300;
+        filters.highs.type = 'peaking';
+        filters.highs.frequency.value = 3500;
+        filters.brightness.type = 'highshelf';
+        filters.brightness.frequency.value = 12000;
+
+        compressor = audioContext.createDynamicsCompressor();
+        compressor.threshold.value = -20;
+        compressor.ratio.value = 4;
+
+        source.connect(filters.subBass)
+              .connect(filters.bass)
+              .connect(filters.midBass)
+              .connect(filters.highs)
+              .connect(filters.brightness)
+              .connect(compressor)
+              .connect(audioContext.destination);
+
+        updateFilters();
+
+        audioPlayer.src = URL.createObjectURL(file);
+        audioPlayer.style.display = 'block';
+        status.textContent = 'Audio loaded! Adjust and play.';
+        loading.style.display = 'none';
+
+        let hasStarted = false;
+        audioPlayer.onplay = () => {
+          if (audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+              if (!hasStarted) {
+                source.start(0);
+                hasStarted = true;
+              }
+            });
+          } else if (!hasStarted) {
+            source.start(0);
+            hasStarted = true;
+          }
+        };
+
+        audioPlayer.onended = () => {
+          source.disconnect();
+          hasStarted = false;
+          source = audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          source.connect(filters.subBass)
+                .connect(filters.bass)
+                .connect(filters.midBass)
+                .connect(filters.highs)
+                .connect(filters.brightness)
+                .connect(compressor)
+                .connect(audioContext.destination);
+        };
+
+        enableDownload(file.name);
+      } catch (error) {
+        status.textContent = `Error: ${error.message}`;
+        status.classList.add('error');
+        loading.style.display = 'none';
+        console.error(error);
+      }
+    });
+
+    function updateFilters() {
+      if (!filters) return;
+      filters.subBass.gain.value = parseFloat(document.getElementById('subBass').value);
+      filters.bass.gain.value = parseFloat(document.getElementById('bass').value);
+      filters.midBass.gain.value = parseFloat(document.getElementById('midBass').value);
+      filters.highs.gain.value = parseFloat(document.getElementById('highs').value);
+      filters.brightness.gain.value = parseFloat(document.getElementById('brightness').value);
+      compressor.threshold.value = document.getElementById('limiter').checked ? -20 : 0;
+    }
+
+    ['subBass', 'bass', 'midBass', 'highs', 'brightness', 'limiter'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateFilters);
+    });
+
+    function enableDownload(originalName) {
+      downloadLink.style.display = 'block';
+      downloadLink.onclick = async (e) => {
+        e.preventDefault();
+        status.textContent = 'Rendering audio...';
+        loading.style.display = 'block';
+
+        try {
+          const offlineContext = new OfflineAudioContext(2, source.buffer.length, source.buffer.sampleRate);
+          const offlineSource = offlineContext.createBufferSource();
+          offlineSource.buffer = source.buffer;
+
+          const offlineFilters = {
+            subBass: offlineContext.createBiquadFilter(),
+            bass: offlineContext.createBiquadFilter(),
+            midBass: offlineContext.createBiquadFilter(),
+            highs: offlineContext.createBiquadFilter(),
+            brightness: offlineContext.createBiquadFilter()
+          };
+
+          offlineFilters.subBass.type = 'lowshelf';
+          offlineFilters.subBass.frequency.value = 45;
+          offlineFilters.subBass.gain.value = parseFloat(document.getElementById('subBass').value);
+          offlineFilters.bass.type = 'lowshelf';
+          offlineFilters.bass.frequency.value = 100;
+          offlineFilters.bass.gain.value = parseFloat(document.getElementById('bass').value);
+          offlineFilters.midBass.type = 'peaking';
+          offlineFilters.midBass.frequency.value = 300;
+          offlineFilters.midBass.gain.value = parseFloat(document.getElementById('midBass').value);
+          offlineFilters.highs.type = 'peaking';
+          offlineFilters.highs.frequency.value = 3500;
+          offlineFilters.highs.gain.value = parseFloat(document.getElementById('highs').value);
+          offlineFilters.brightness.type = 'highshelf';
+          offlineFilters.brightness.frequency.value = 12000;
+          offlineFilters.brightness.gain.value = parseFloat(document.getElementById('brightness').value);
+
+          const offlineCompressor = offlineContext.createDynamicsCompressor();
+          offlineCompressor.threshold.value = document.getElementById('limiter').checked ? -20 : 0;
+          offlineCompressor.ratio.value = 4;
+
+          offlineSource.connect(offlineFilters.subBass)
+                       .connect(offlineFilters.bass)
+                       .connect(offlineFilters.midBass)
+                       .connect(offlineFilters.highs)
+                       .connect(offlineFilters.brightness)
+                       .connect(offlineCompressor)
+                       .connect(offlineContext.destination);
+
+          offlineSource.start();
+          const renderedBuffer = await offlineContext.startRendering();
+          const wavBlob = audioBufferToWav(renderedBuffer);
+          const url = URL.createObjectURL(wavBlob);
+
+          downloadLink.href = url;
+          downloadLink.download = `linkedin_mix_${originalName.split('.')[0]}.wav`;
+          status.textContent = 'Download ready!';
+          loading.style.display = 'none';
+          downloadLink.click();
+        } catch (error) {
+          status.textContent = `Render failed: ${error.message}`;
+          status.classList.add('error');
+          loading.style.display = 'none';
+          console.error(error);
+        }
+      };
+    }
+
+    function audioBufferToWav(buffer) {
+      const numChannels = buffer.numberOfChannels;
+      const sampleRate = buffer.sampleRate;
+      const length = buffer.length * numChannels * 2 + 44;
+      const arrayBuffer = new ArrayBuffer(length);
+      const view = new DataView(arrayBuffer);
+
+      writeString(view, 0, 'RIFF');
+      view.setUint32(4, 36 + buffer.length * numChannels * 2, true);
+      writeString(view, 8, 'WAVE');
+      writeString(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * numChannels * 2, true);
+      view.setUint16(32, numChannels * 2, true);
+      view.setUint16(34, 16, true);
+      writeString(view, 36, 'data');
+      view.setUint32(40, buffer.length * numChannels * 2, true);
+
+      for (let i = 0; i < buffer.length; i++) {
+        for (let channel = 0; channel < numChannels; channel++) {
+          const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+          view.setInt16(44 + (i * numChannels + channel) * 2, sample * 32767, true);
+        }
+      }
+
+      return new Blob([arrayBuffer], { type: 'audio/wav' });
+    }
+
+    function writeString(view, offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+  </script>
+</body>
+</html>
